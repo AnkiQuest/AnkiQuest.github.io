@@ -1,0 +1,10 @@
+{
+  "name": "ankiquest-gallery",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "build": "node src/build.ts",
+    "test": "node --test src/*.test.ts"
+  }
+}

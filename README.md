@@ -11,3 +11,7 @@ node src/build.ts server _site
 ```
 
 Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`. The `pages` workflow builds and deploys on every push to `master`.
+
+## Licence
+
+AGPL-3.0-or-later ([LICENSE](LICENSE)). The poses keep the licence of their masters in AnkiQuest-Server; the gallery shows each companion's credit from its `LICENSE` file there.

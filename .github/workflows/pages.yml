@@ -4,7 +4,7 @@ name: pages
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
   workflow_dispatch:
   # Daily, to pick up new masters from AnkiQuest-Server.
@@ -32,13 +32,14 @@ jobs:
           ref: master
           path: server
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      # Node and cwebp come from the dev shell (AnkiQuest-Dev's gallery shell).
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31
         with:
-          node-version: 22
-      - name: Install cwebp for the previews
-        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends webp
-      - run: npm test
-      - run: node src/build.ts server _site
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - run: nix flake check
+      - run: nix develop -c npm test
+      - run: nix develop -c node src/build.ts server _site
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

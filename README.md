@@ -6,4 +6,4 @@ The gallery at <https://ankiquest.github.io>: every drawn pose of every live com
 node src/build.ts <AnkiQuest-Server checkout> _site
 ```
 
-Needs Node 22.18 or later and `cwebp` (package `webp`). The `pages` workflow builds and deploys on every push to `main` and daily.
+Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`. The `pages` workflow builds and deploys on every push to `master` and daily.

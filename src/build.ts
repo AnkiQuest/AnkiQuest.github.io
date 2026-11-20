@@ -1,8 +1,8 @@
 // Builds the gallery from an AnkiQuest-Server checkout:
 //   node src/build.ts <server-checkout> <out-dir>
-// Writes index.html, the stylesheet and script, copies each pose's master
-// byte for byte under art/<companion>/ and makes a small WebP preview of
-// it there for the grid. Previews need cwebp (Debian/Ubuntu package webp).
+// Writes index.html and the stylesheet, copies each pose's master byte for
+// byte under art/<companion>/ and makes a small WebP preview of it there
+// for the grid. Previews need cwebp (Debian/Ubuntu package webp).
 
 import { execFileSync } from "node:child_process";
 import { closeSync, copyFileSync, mkdirSync, openSync, readSync, rmSync, writeFileSync } from "node:fs";
@@ -12,9 +12,7 @@ import { fileURLToPath } from "node:url";
 import { companions, type Companion, type Pose } from "./art.ts";
 
 /** The files under site/ copied next to index.html. */
-const ASSETS = ["style.css", "filter.js"];
-
-const SERVER_REPO = "https://github.com/AnkiQuest/AnkiQuest-Server";
+const ASSETS = ["style.css"];
 
 /** Width of the grid previews, in pixels; masters are wider. */
 const PREVIEW_WIDTH = 480;
@@ -24,13 +22,6 @@ const PREVIEW_QUALITY = 80;
 
 /** Bytes before a PNG's width and height in its IHDR chunk. */
 const PNG_SIZE_OFFSET = 16;
-
-const LINKS: [string, string][] = [
-  ["ankiquest.org", "https://ankiquest.org"],
-  ["Server", SERVER_REPO],
-  ["Android", "https://github.com/AnkiQuest/AnkiQuest-Android"],
-  ["Desktop", "https://github.com/AnkiQuest/AnkiQuest-Desktop"],
-];
 
 /** Escapes text for HTML content and attribute values. */
 export function esc(text: string): string {
@@ -42,13 +33,10 @@ function linked(text: string): string {
   return esc(text).replace(/https:\/\/[^\s)&]+/g, (url) => `<a href="${url}">${url}</a>`);
 }
 
-/** Plain text as paragraphs: blank lines split them, line breaks do not. */
-function paragraphs(text: string): string {
-  return text
-    .trim()
-    .split(/\n\s*\n/)
-    .map((para) => `<p>${linked(para.replace(/\s*\n\s*/g, " "))}</p>`)
-    .join("");
+/** The credit a licence asks for: its first two paragraphs, on one line. */
+export function credit(licence: string): string {
+  const [who = "", terms = ""] = licence.trim().split(/\n\s*\n/);
+  return linked(`${who} ${terms}`.replace(/\s+/g, " ").trim());
 }
 
 /** A pose name as words: streak_hot becomes "streak hot". */
@@ -100,7 +88,7 @@ function preview(master: string, out: string, width: number): void {
   }
 }
 
-/** Copies each master the page shows and makes its preview. */
+/** Copies each drawn master and makes its preview. */
 function copyArt(out: string, list: Companion[]): Map<string, Art> {
   const art = new Map<string, Art>();
   for (const companion of list) {
@@ -127,75 +115,38 @@ function copyArt(out: string, list: Companion[]): Map<string, Art> {
   return art;
 }
 
-/** One pose's card. */
+/** One drawn pose: its preview, linking to the master, and its name. */
 function card(companion: Companion, pose: Pose, art: Map<string, Art>): string {
-  const status = pose.status;
+  if (pose.status.state !== "drawn") {
+    return "";
+  }
+  const shown = art.get(pose.status.file);
+  if (shown === undefined) {
+    throw new Error(`no copy of ${pose.status.file}`);
+  }
   const label = words(pose.name);
-  const search = [pose.name, label, pose.kind, ...pose.moods].join(" ");
-
-  // The picture: the master, or the fallback the apps show instead.
-  let picture = `<div class="none">Not drawn</div>`;
-  let note = "";
-  if (status.state !== "missing") {
-    const shown = art.get(status.file);
-    if (shown === undefined) {
-      throw new Error(`no copy of ${status.file}`);
-    }
-    const alt =
-      status.state === "drawn"
-        ? `${companion.name}, ${label} pose`
-        : `${companion.name}, ${words(status.pose)} pose, shown for ${label}`;
-    // The preview in the grid; the link opens the full master.
-    const img = `<img src="${esc(shown.preview)}" alt="${esc(alt)}" width="${shown.width}" height="${shown.height}" loading="lazy" decoding="async">`;
-    picture = `<a href="${esc(shown.master)}">${img}</a>`;
-  }
-  if (status.state === "fallback") {
-    note = `<p class="note">Not drawn yet. The apps show ${esc(words(status.pose))}.</p>`;
-  }
-  if (status.state === "missing") {
-    note = `<p class="note">Not drawn yet.</p>`;
-  }
-
-  const moods = pose.moods.length
-    ? `<p class="moods">Moods: ${pose.moods.map((m) => `<span>${esc(words(m))}</span>`).join(" ")}</p>`
-    : "";
-  const fallback = pose.fallback ? ` <span class="kind">falls back to ${esc(words(pose.fallback))}</span>` : "";
-  return `<li class="pose ${status.state}" data-search="${esc(search.toLowerCase())}">
-<figure>${picture}<figcaption><strong>${esc(label)}</strong>
-<span class="tag ${pose.kind}">${pose.kind}</span>${fallback}${moods}${note}</figcaption></figure></li>`;
+  const img = `<img src="${esc(shown.preview)}" alt="${esc(`${companion.name}, ${label}`)}" width="${shown.width}" height="${shown.height}" loading="lazy" decoding="async">`;
+  return `<li><a href="${esc(shown.master)}">${img}</a><span>${esc(label)}</span></li>`;
 }
 
-/** One companion's section. */
+/** One companion: its name, the credit its licence asks for, and its poses. */
 function section(companion: Companion, art: Map<string, Art>): string {
-  const drawn = companion.poses.filter((p) => p.status.state === "drawn").length;
-  const stage = companion.stage === "live" ? "Live in the apps" : "Planned, not in the apps yet";
-  const licence = companion.licence ? `<div class="licence">${paragraphs(companion.licence)}</div>` : "";
-  const cards = companion.poses.map((pose) => card(companion, pose, art)).join("\n");
+  const licence = companion.licence ? `<p class="credit">${credit(companion.licence)}</p>\n` : "";
+  const cards = companion.poses
+    .map((pose) => card(companion, pose, art))
+    .filter(Boolean)
+    .join("\n");
   return `<section id="${esc(companion.id)}">
-<h2>${esc(companion.name)} <span class="stage ${companion.stage}">${stage}</span></h2>
-<p class="count">${drawn} of ${companion.poses.length} poses drawn</p>
+<h2>${esc(companion.name)}</h2>
 ${licence}<ul class="grid">
 ${cards}
 </ul>
 </section>`;
 }
 
-/** The Server commit the page was built from, if the checkout is a git one. */
-function commit(server: string): string | undefined {
-  try {
-    return execFileSync("git", ["-C", server, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-  } catch {
-    return undefined;
-  }
-}
-
 /** The whole page. */
-export function page(list: Companion[], art: Map<string, Art>, sha?: string): string {
-  const nav = LINKS.map(([text, href]) => `<a href="${href}">${text}</a>`).join("\n");
+export function page(list: Companion[], art: Map<string, Art>): string {
   const toc = list.map((c) => `<a href="#${esc(c.id)}">${esc(c.name)}</a>`).join("\n");
-  const source = sha
-    ? `<a href="${SERVER_REPO}/tree/${sha}/static">AnkiQuest-Server ${sha.slice(0, 7)}</a>`
-    : `<a href="${SERVER_REPO}/tree/master/static">AnkiQuest-Server</a>`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -207,18 +158,11 @@ export function page(list: Companion[], art: Map<string, Art>, sha?: string): st
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-<p class="brand">AnkiQuest</p>
-<nav>${nav}</nav>
-</header>
 <main>
-<h1>Companions</h1>
-<p class="intro">Every pose of every companion, from the masters in ${source}. Core poses are needed for every companion; a missing extension shows its fallback in the apps. Moods are the streak states that show a pose.</p>
-<nav class="toc">${toc}</nav>
-<label class="filter">Find a pose or mood <input type="search" id="filter" placeholder="frozen, streak, sad…" autocomplete="off"></label>
+<h1><a href="https://ankiquest.org">AnkiQuest</a> companions</h1>
+<nav>${toc}</nav>
 ${list.map((c) => section(c, art)).join("\n")}
 </main>
-<script src="filter.js" defer></script>
 </body>
 </html>
 `;
@@ -235,7 +179,7 @@ export function build(server: string, out: string): void {
   for (const asset of ASSETS) {
     copyFileSync(join(site, asset), join(out, asset));
   }
-  writeFileSync(join(out, "index.html"), page(list, art, commit(server)));
+  writeFileSync(join(out, "index.html"), page(list, art));
 
   console.log(`${list.length} companions, ${art.size} masters and previews, into ${out}`);
 }

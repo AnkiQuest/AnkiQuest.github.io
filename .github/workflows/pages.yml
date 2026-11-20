@@ -1,5 +1,6 @@
-# Builds the gallery from AnkiQuest-Server's pose masters and fixtures and
-# deploys it to GitHub Pages. Pull requests only test and build.
+# Builds the gallery from the pose masters and fixtures of the AnkiQuest-Server
+# commit the `server` submodule pins, and deploys it to GitHub Pages. Pull
+# requests only test and build. Dependabot opens the submodule bumps.
 name: pages
 
 on:
@@ -7,9 +8,6 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
-  # Daily, to pick up new masters from AnkiQuest-Server.
-  schedule:
-    - cron: "17 4 * * *"
 
 permissions:
   contents: read
@@ -26,12 +24,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: AnkiQuest/AnkiQuest-Server
-          ref: master
-          path: server
-          persist-credentials: false
+          submodules: true
       # Node and cwebp come from the dev shell (AnkiQuest-Dev's gallery shell).
       - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31
         with:

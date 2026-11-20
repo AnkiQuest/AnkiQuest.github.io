@@ -142,7 +142,6 @@ h2 {
 }
 
 .licence {
-  white-space: pre-line;
   font-size: 0.85rem;
   max-width: 70ch;
   overflow-wrap: anywhere;

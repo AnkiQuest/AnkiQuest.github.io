@@ -24,17 +24,20 @@ nothing here commits them.
   missing extension shows the first pose its fallback chain reaches. These
   are the rules of `xtask art-coverage` in AnkiQuest-Server.
 
-It writes `index.html`, `style.css`, `filter.js` and `art/<companion>/<pose>.png`.
+It writes `index.html`, `style.css`, `filter.js`, each master unchanged as
+`art/<companion>/<pose>.png`, and a WebP preview at most 480 px wide as
+`art/<companion>/<pose>.webp`. The grid shows the previews; clicking a pose
+opens its master. The previews are made with `cwebp`.
 
 The `pages` workflow builds from AnkiQuest-Server `master` and deploys to
-GitHub Pages on every push to `main`, daily, by hand, and on a
-`repository_dispatch` of type `art-changed`. Pull requests run the tests
-and the build without deploying.
+GitHub Pages on every push to `main`, daily and by hand. Pull requests run
+the tests and the build without deploying.
 
 ## Run locally
 
-Node 22.18 or later runs the TypeScript directly; there are no
-dependencies.
+Node 22.18 or later runs the TypeScript directly; there are no npm
+dependencies. The previews need `cwebp` (Debian and Ubuntu package `webp`,
+Homebrew `webp`).
 
 ```sh
 git clone https://github.com/AnkiQuest/AnkiQuest-Server ../AnkiQuest-Server

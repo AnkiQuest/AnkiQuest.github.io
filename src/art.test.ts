@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { companions, folder, status } from "./art.ts";
-import { esc } from "./build.ts";
+import { esc, previewSize } from "./build.ts";
 
 const LIST = {
   core: ["face", "streak", "frozen"],
@@ -97,4 +97,10 @@ test("companions: starter first, secret and undrawn ones hidden", () => {
 
 test("escapes markup", () => {
   assert.equal(esc(`<a href="x">'&'</a>`), "&#60;a href=&#34;x&#34;&#62;&#39;&#38;&#39;&#60;/a&#62;");
+});
+
+test("previews are at most 480 px wide and keep the shape", () => {
+  assert.deepEqual(previewSize(1254, 1254), [480, 480]);
+  assert.deepEqual(previewSize(1024, 1536), [480, 720]);
+  assert.deepEqual(previewSize(400, 300), [400, 300]);
 });

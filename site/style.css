@@ -5,10 +5,6 @@
   --muted: #6b665e;
   --line: #e4e0d8;
   --accent: #b45309;
-  --live: #166534;
-  --live-bg: #dcfce7;
-  --planned: #6b21a8;
-  --planned-bg: #f3e8ff;
   --tile: #f3f1ec;
   color-scheme: light dark;
 }
@@ -21,10 +17,6 @@
     --muted: #a39d93;
     --line: #34322e;
     --accent: #f59e0b;
-    --live: #86efac;
-    --live-bg: #14361f;
-    --planned: #d8b4fe;
-    --planned-bg: #33204a;
     --tile: #2a2926;
   }
 }
@@ -44,28 +36,6 @@ a {
   color: var(--accent);
 }
 
-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 24px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
-}
-
-.brand {
-  margin: 0;
-  font-weight: 700;
-  font-size: 1.15rem;
-}
-
-header nav,
-.toc {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-}
-
 main {
   max-width: 1200px;
   margin: 0 auto;
@@ -76,35 +46,15 @@ h1 {
   margin: 24px 0 8px;
 }
 
-.intro,
-.count,
-.licence,
-.note,
-.moods {
-  color: var(--muted);
+h1 a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.intro {
-  max-width: 70ch;
-}
-
-.filter {
+nav {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 16px 0;
-}
-
-.filter input {
-  flex: 1 1 200px;
-  max-width: 360px;
-  padding: 8px 10px;
-  font: inherit;
-  color: inherit;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  gap: 4px 16px;
 }
 
 section {
@@ -112,38 +62,14 @@ section {
 }
 
 h2 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
   margin: 0;
 }
 
-.stage,
-.tag {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.stage.live {
-  color: var(--live);
-  background: var(--live-bg);
-}
-
-.stage.planned {
-  color: var(--planned);
-  background: var(--planned-bg);
-}
-
-.count {
-  margin: 4px 0 8px;
-}
-
-.licence {
-  font-size: 0.85rem;
+.credit {
+  margin: 4px 0 0;
   max-width: 70ch;
+  color: var(--muted);
+  font-size: 0.8rem;
   overflow-wrap: anywhere;
 }
 
@@ -156,17 +82,14 @@ h2 {
   gap: 12px;
 }
 
-.pose figure {
-  margin: 0;
-  height: 100%;
+.grid li {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
 }
 
-.pose img,
-.pose .none {
+.grid img {
   display: block;
   width: 100%;
   height: auto;
@@ -175,54 +98,11 @@ h2 {
   background: var(--tile);
 }
 
-.pose .none {
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
-
-.pose.fallback img {
-  opacity: 0.45;
-  filter: grayscale(0.6);
-}
-
-figcaption {
-  padding: 8px 10px 10px;
+.grid span {
+  display: block;
+  padding: 6px 10px 8px;
   font-size: 0.9rem;
   overflow-wrap: anywhere;
-}
-
-figcaption strong {
-  display: block;
-}
-
-.tag.core {
-  color: var(--accent);
-  border: 1px solid currentColor;
-}
-
-.tag.extension {
-  color: var(--muted);
-  border: 1px solid currentColor;
-}
-
-.kind {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.moods,
-.note {
-  margin: 6px 0 0;
-  font-size: 0.8rem;
-}
-
-.moods span {
-  white-space: nowrap;
-}
-
-.moods span + span::before {
-  content: "· ";
 }
 
 @media (min-width: 700px) {

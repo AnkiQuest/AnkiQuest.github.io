@@ -105,6 +105,53 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+h3 {
+  margin: 28px 0 0;
+  font-size: 1.15rem;
+}
+
+h4 {
+  margin: 20px 0 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+/* Captions of pictures that are not poses: file name, note, licence. */
+.grid .caption {
+  padding: 6px 10px 8px;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.grid .caption code {
+  display: block;
+  font-size: 0.8rem;
+}
+
+.grid .caption small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.grid .caption details {
+  margin-top: 4px;
+}
+
+.frames {
+  margin: 4px 0 0;
+  padding-left: 1.6em;
+  font-size: 0.75rem;
+}
+
+/* Frame links are list items inside a card, not cards. */
+.grid .frames li {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
 @media (min-width: 700px) {
   .grid {
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));

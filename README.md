@@ -2,11 +2,15 @@
 
 The gallery at <https://ankiquest.github.io>: every drawn pose of every live companion, built from the pose masters in [AnkiQuest-Server](https://github.com/AnkiQuest/AnkiQuest-Server).
 
+The masters come from the AnkiQuest-Server commit the `server` submodule
+pins; Dependabot opens a pull request when AnkiQuest-Server moves.
+
 ```sh
-node src/build.ts <AnkiQuest-Server checkout> _site
+git submodule update --init
+node src/build.ts server _site
 ```
 
-Needs Node 22.18 or later and `cwebp` (package `webp`). The `pages` workflow builds and deploys on every push to `main` and daily.
+Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`. The `pages` workflow builds and deploys on every push to `master`.
 
 ## Licence
 

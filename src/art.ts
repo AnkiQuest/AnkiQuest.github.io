@@ -1,14 +1,15 @@
-// Reads the companions, their poses and the moods from an AnkiQuest-Server
-// checkout. The rules follow `xtask art-coverage` there: a pose's master is
-// the file the folder's poses.json lists, else <pose>.png, else the older
-// name in RENAMES; a missing extension shows the first pose its fallback
-// chain reaches that exists.
+// Reads the companions and their pictures from an AnkiQuest-Art checkout,
+// and the pose list, unlocks and moods from an AnkiQuest-Server checkout.
 //
-// Every other picture in a companion's folder is filed into one group by
-// RULES below; a picture no rule files fails the build.
+// Art's manifest.json lists every master with its origin: a file of
+// Shigeyuki's Anki-tan pack, a derivative AnkiQuest made from his Anki-tan,
+// or AnkiQuest's own art. Each companion's pictures fall into three parts:
+// Shigeyuki's originals, our art in use (the masters) and our retired art
+// (the archive). A picture in the checkout that the manifest does not
+// account for, or a picture with no note, fails the build.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { join, relative } from "node:path";
 
 /** The pose list both clients use. */
 const POSES = "tests/fixtures/companion_poses.json";
@@ -19,21 +20,17 @@ const UNLOCKS = "tests/fixtures/companion_unlock.json";
 /** Today's streak mood and the pose each mood shows. */
 const MOODS = "tests/fixtures/streak_moods.json";
 
+/** Art's record of every master, the missing poses and the archive. */
+const MANIFEST = "manifest.json";
+
+/** Art's folder of generation records; its pictures are not companion art. */
+const DOCS = "docs";
+
 /** The companion every player starts with; it is not in UNLOCKS. */
 const STARTER = "aki";
 
 /** The `status` UNLOCKS gives a companion players can have. */
 const LIVE = "live";
-
-/** The per-folder list of pose files (Anki-tan's pack art). */
-const LISTED = "poses.json";
-
-/** Older master file names, checked after the pose's own name. */
-const RENAMES: Record<string, string> = {
-  happy: "celebrate",
-  frozen: "freeze",
-  leech_defeated: "leech",
-};
 
 /** The names players use for each companion id. */
 const NAMES: Record<string, string> = {
@@ -47,23 +44,32 @@ const NAMES: Record<string, string> = {
   leech_kun: "Leech-kun",
 };
 
+/** Licences the manifest names (SPDX), as the page shows them. */
+const LICENCES: Record<string, string> = {
+  "CC-BY-SA-4.0": "CC BY-SA 4.0",
+  "AGPL-3.0-or-later": "AGPL-3.0-or-later",
+};
+
 // String unions, not enums: Node runs this file by stripping types, and
 // enums are not erasable.
 
-/**
- * Whether players can have a companion yet; `shared` is a folder of
- * pictures that show several companions together.
- */
+/** Whether players can have a companion yet; `shared` shows several together. */
 export type Stage = "live" | "planned" | "shared";
 
 /** Whether every companion needs the pose, or it has a fallback. */
 export type Kind = "core" | "extension";
 
+/**
+ * Who made a picture: Shigeyuki (a file of his pack, unchanged), AnkiQuest
+ * from his Anki-tan, or AnkiQuest for its own companions.
+ */
+export type Origin = "shigeyuki" | "derivative" | "ankiquest";
+
 /** Whether a pose has a master, shows a fallback, or neither. */
 export type Status =
   | { state: "drawn"; file: string }
   | { state: "fallback"; pose: string; file: string }
-  | { state: "missing" };
+  | { state: "missing"; issue?: string };
 
 export interface Pose {
   name: string;
@@ -72,6 +78,34 @@ export interface Pose {
   fallback?: string;
   moods: string[];
   status: Status;
+  /** Who made the master the pose shows, when it shows one. */
+  origin?: Origin;
+}
+
+/** One picture file in the Art checkout. */
+export interface Picture {
+  /** Relative to the Art checkout, such as `aki/freeze.png`. */
+  file: string;
+  /** Absolute path. */
+  path: string;
+  /** The name the card shows: the pack path for Shigeyuki's files, else `file`. */
+  name: string;
+  origin: Origin;
+  author: string;
+  /** The licence as the page shows it. */
+  licence: string;
+  /** What the picture is or where it is used; empty when unused. */
+  note: string;
+  /** For a pose master, the pose names it shows. */
+  poses: string[];
+}
+
+/** An animation of Shigeyuki's pack: its frames and his animated PNG of it. */
+export interface Sequence {
+  name: string;
+  /** The frames in order, each with the Art file that holds it. */
+  frames: Picture[];
+  animation: Picture;
 }
 
 export interface Companion {
@@ -79,12 +113,68 @@ export interface Companion {
   name: string;
   stage: Stage;
   poses: Pose[];
-  /** Every picture in the folder, filed into its group, in file order. */
-  pictures: Picture[];
-  /** The animations among the pictures. */
+  /** Shigeyuki's pictures, as his pack lays them out. */
+  original: Picture[];
+  /** The animations among the originals. */
   sequences: Sequence[];
-  /** The folder's LICENSE text, when it has one. */
+  /** Art we made that the apps use: the masters. */
+  used: Picture[];
+  /** Art we made that is retired: the archive. */
+  retired: Picture[];
+  /** The companion folder's LICENSE text, when it has one. */
   licence?: string;
+}
+
+/** A master as manifest.json lists it. */
+interface Entry {
+  companion: string;
+  pose: string;
+  kind: Kind | "picture";
+  file: string;
+  licence: string;
+  origin: Origin;
+  author: string;
+  /** The file's path in Shigeyuki's pack. */
+  pack?: string;
+}
+
+/** A shared picture as manifest.json lists it. */
+interface SharedEntry {
+  name: string;
+  shows: string[];
+  file: string;
+  licence: string;
+  origin: Origin;
+  author: string;
+}
+
+/** A retired picture as manifest.json lists it. */
+interface RetiredEntry {
+  companion: string;
+  pose: string;
+  file: string;
+  replaced_by: string;
+  note?: string;
+  licence: string;
+  origin: Origin;
+  author: string;
+}
+
+/** The rest of Shigeyuki's pack, by folder, as manifest.json lists it. */
+interface PackEntry {
+  companion: string;
+  folder: string;
+  licence: string;
+  origin: Origin;
+  author: string;
+  source: string;
+}
+
+export interface Manifest {
+  masters: Entry[];
+  shared: SharedEntry[];
+  missing: { companion: string; pose: string; issue: string }[];
+  archive: { retired: RetiredEntry[]; pack: PackEntry };
 }
 
 interface PoseList {
@@ -92,228 +182,101 @@ interface PoseList {
   extensions: Record<string, string>;
 }
 
-/** The page's groups of pictures, in page order. */
-export const GROUPS = ["pose", "moment", "icon", "pack", "older"] as const;
-
-/**
- * Where a picture belongs: a pose master; a moment, share-card or
- * notification picture; a small or launcher icon; third-party pack art;
- * or an older version no app uses.
- */
-export type Group = (typeof GROUPS)[number];
-
-/** The kinds of pack art, in page order. */
-export const PACKS = ["illustration", "sticker", "emoji", "sprite", "chibi"] as const;
-
-/** One kind of pack art. */
-export type Pack = (typeof PACKS)[number];
-
-/** Whether an older file has the same bytes as the file that replaced it. */
-export type Copy = "same" | "changed";
-
-/** How RULES file a picture that is not a pose master. */
-export type Rule =
-  | { group: "moment" | "icon"; note: string }
-  | { group: "older"; replacedBy: string; note?: string }
-  | { group: "pack"; pack: Pack; note?: string };
-
-/** Where a picture is filed. Poses come from the pose list, not RULES. */
-export type Place =
-  | { group: "pose"; poses: string[] }
-  | { group: "moment" | "icon"; note: string }
-  | { group: "older"; replacedBy: string; copy: Copy; note?: string }
-  | { group: "pack"; pack: Pack; note?: string };
-
-/** The credit and licence a folder's LICENSE or README gives. */
-export interface Credit {
-  /** The LICENSE or README, relative to static/; empty for the default. */
-  source: string;
-  /** The credit as plain text. */
-  text: string;
-  /** The licence's short name. */
-  licence: string;
-}
-
-/** One picture file under static/. */
-export interface Picture {
-  /** Relative to static/, such as `aki/freeze.png`. */
-  file: string;
-  /** Relative to the companion's folder, such as `freeze.png`. */
-  name: string;
-  path: string;
-  place: Place;
-  credit: Credit;
-}
-
-/** An animation: its frame folder and the pack's animated PNG of it. */
-export interface Sequence {
-  name: string;
-  /** The frames' folder, relative to static/. */
-  frames: string;
-  /** The animated PNG, relative to static/. */
-  animation: string;
-}
-
 /** Files that count as pictures; other files (README, LICENSE, JSON) are notes. */
 const IMAGE = /\.(png|webp|jpe?g|gif|svg)$/i;
 
-/** The licence of masters whose folder names none (AnkiQuest-Server's README). */
-const SERVER_LICENCE = "AGPL-3.0-or-later";
-
-/** AnkiQuest-Server's licence text. */
-const SERVER_LICENCE_URL = "https://github.com/AnkiQuest/AnkiQuest-Server/blob/master/LICENSE";
-
-/** Licences a LICENSE or README may give, and their short names. */
-const LICENCES: [RegExp, string][] = [
-  [/CC BY-SA 4\.0/, "CC BY-SA 4.0"],
-  [/repository licen[cs]e/i, SERVER_LICENCE],
-];
-
-/** README sentences that give credit or licence, or say how art was made. */
-const CREDIT_LINE = /licen[cs]e|CC BY|credit|by Shigeyuki|image_gen/i;
-
-/** Folders under static/ that show several companions, and their names. */
-const SHARED: Record<string, string> = {
-  duo: "Aki and Ankilope",
-};
-
-// Shorthands for RULES.
-const moment = (note: string): Rule => ({ group: "moment", note });
-const icon = (note: string): Rule => ({ group: "icon", note });
-const older = (replacedBy: string, note?: string): Rule => ({ group: "older", replacedBy, note });
-const pack = (kind: Pack, note?: string): Rule => ({ group: "pack", pack: kind, note });
-
-/** Rules for each folder under static/: file or `folder/` to rule. */
-export type Rules = Record<string, Record<string, Rule>>;
-
 /**
- * How each folder's pictures that are not pose masters are filed. Keys are
- * relative to the folder; a key ending in `/` files every picture under it
- * that no file key or pose names. Uses are from the exporters (Server
- * `build.rs` and `xtask art`, the add-on's `art-exports.json`) and the
- * Android app. `replacedBy` is relative to the folder.
+ * What each master that is not a pose is for, by Art path. Uses are from
+ * the exporters (Server `build.rs` and `xtask art`, the add-on's
+ * `art-exports.json`) and the Android app. Every picture the manifest
+ * lists needs a note here; a note for a file it does not list fails.
  */
-export const RULES: Rules = {
-  aki: {
-    "achievement.png": moment("Achievement and other celebrations"),
-    "at_risk.png": moment("Streak at risk"),
-    "backlog.png": moment("Backlog goal"),
-    "challenge.png": moment("Challenge sent or accepted"),
-    "challenge_lost.png": moment("Challenge lost"),
-    "challenge_won.png": moment("Challenge won"),
-    "comeback.png": moment("Back after a break"),
-    "deck_conquered.png": moment("Deck conquered"),
-    "freeze.png": moment("Streak freeze used: share cards, web and add-on; Android shows it on frozen day 2"),
-    "freeze_used.png": moment("Streak freeze used: Android"),
-    "goal.png": moment("Daily goal reached"),
-    "level_up.png": moment("Level up"),
-    "minimum.png": moment("Daily minimum done"),
-    "nudge.png": moment("Nudge from a friend"),
-    "place_1.png": moment("First place on the weekly board"),
-    "place_2.png": moment("Second place on the weekly board"),
-    "place_3.png": moment("Third place on the weekly board"),
-    "face-192.png": icon("Web page icon, 192 px"),
-    "face-32.png": icon("Browser tab icon, 32 px"),
-    "icon_frozen.png": icon("Android launcher icon, frozen"),
-    "icon_happy.png": icon("Android launcher icon, happy"),
-    "icon_sleepy.png": icon("Android launcher icon, sleepy"),
-    "icon_worried.png": icon("Android launcher icon, worried"),
-  },
-  ankilope: {
-    "backlog.png": moment("Backlog goal"),
-    "challenge.png": moment("Challenge sent or accepted"),
-    "challenge_lost.png": moment("Challenge lost"),
-    "challenge_won.png": moment("Challenge won"),
-    "nudge.png": moment("Nudge from a friend"),
-    "place_1.png": moment("First place on the weekly board"),
-    "place_2.png": moment("Second place on the weekly board"),
-    "place_3.png": moment("Third place on the weekly board"),
-    "study.png": moment("Studying: the apps show it for streak and review"),
-    "face-192.png": icon("Web page icon, 192 px"),
-  },
-  cow: {
-    "archive/celebrate.png": older("happy.png"),
-    "archive/face.png": older("face.png"),
-    "archive/frozen.png": older("frozen.png"),
-    "archive/hopeful.png": older("hopeful.png"),
-    "archive/neglected.png": older("neglected.png"),
-    "archive/sad.png": older("sad.png"),
-    "archive/sleeping.png": older("asleep.png"),
-    "archive/streak.png": older("streak.png"),
-    "archive/addon/bluma_celebrate.png": older("happy.png", "Add-on export under its earlier name; now bluma_happy.png"),
-    "archive/addon/bluma_sleeping.png": older("asleep.png", "Add-on export under its earlier name; now bluma_asleep.png"),
-  },
-  "anki-tan": {
-    "icon.png": icon("Android launcher icon"),
-    "archive/asleep-full.png": older("asleep.png"),
-    "archive/sad-full.png": older("sad.png"),
-    "archive/neglected-full.png": older("neglected.png", "All three headband stars lit"),
-    "archive/addon/anki_tan_sleeping.png": older("asleep.png", "Add-on export under its earlier name; now anki_tan_asleep.png"),
-    "archive/addon/anki_tan_neglected-three-blue-stars.png": older(
-      "neglected.png",
-      "Add-on export with all three headband stars lit; now anki_tan_neglected.png, one star unlit",
-    ),
-    "generated/frozen-full.png": older("frozen.png"),
-    "generated/frozen-chibi.png": older("chibi/frozen.png"),
-    "chibi/frozen.png": pack("chibi", "Generated from the pack's chibi faces"),
-    "illust/": pack("illustration"),
-    "sticker/": pack("sticker"),
-    "emoji/Ankitan_00_smile.png": pack("emoji", "Android themed launcher icon"),
-    "emoji/Ankitan_02_cry.png": pack("emoji", "Android launcher icon, worried"),
-    "emoji/Ankitan_35_sleeping.png": pack("emoji", "Android launcher icon, sleepy"),
-    "emoji/": pack("emoji"),
-    "sprite/": pack("sprite"),
-  },
-  duo: {
-    "friends.png": moment("Friends panel on the Android home screen"),
-  },
+export const NOTES: Record<string, string> = {
+  "aki/achievement.png": "Achievement and other celebrations",
+  "aki/at_risk.png": "Streak at risk",
+  "aki/backlog.png": "Backlog goal",
+  "aki/challenge.png": "Challenge sent or accepted",
+  "aki/challenge_lost.png": "Challenge lost",
+  "aki/challenge_won.png": "Challenge won",
+  "aki/comeback.png": "Back after a break",
+  "aki/deck_conquered.png": "Deck conquered",
+  "aki/freeze.png": "Streak freeze used: share cards, web and add-on; Android shows it on frozen day 2",
+  "aki/freeze_used.png": "Streak freeze used: Android",
+  "aki/goal.png": "Daily goal reached",
+  "aki/level_up.png": "Level up",
+  "aki/minimum.png": "Daily minimum done",
+  "aki/nudge.png": "Nudge from a friend",
+  "aki/place_1.png": "First place on the weekly board",
+  "aki/place_2.png": "Second place on the weekly board",
+  "aki/place_3.png": "Third place on the weekly board",
+  "aki/icon_frozen.png": "Android launcher icon, frozen",
+  "aki/icon_happy.png": "Android launcher icon, happy",
+  "aki/icon_sleepy.png": "Android launcher icon, sleepy",
+  "aki/icon_worried.png": "Android launcher icon, worried",
+  "ankilope/backlog.png": "Backlog goal",
+  "ankilope/challenge.png": "Challenge sent or accepted",
+  "ankilope/challenge_lost.png": "Challenge lost",
+  "ankilope/challenge_won.png": "Challenge won",
+  "ankilope/nudge.png": "Nudge from a friend",
+  "ankilope/place_1.png": "First place on the weekly board",
+  "ankilope/place_2.png": "Second place on the weekly board",
+  "ankilope/place_3.png": "Third place on the weekly board",
+  "ankilope/study.png": "Studying: the apps show it for streak and review",
+  "anki-tan/icon.png": "Android launcher icon",
+  "anki-tan/icon_mono.png": "Android themed launcher icon",
+  "duo/friends.png": "Friends panel on the Android home screen",
 };
 
-/** Animations per folder: frame folder and animated PNG, relative to it. */
-const SEQUENCES: Record<string, Sequence[]> = {
-  "anki-tan": [
-    { name: "hello", frames: "sprite/hello", animation: "sprite/Anki-tan_hello_240px.png" },
-    { name: "idle", frames: "sprite/idle", animation: "sprite/Anki-tan_idle_240px.png" },
-  ],
-};
+/** Shigeyuki's animations: frame folder and animated PNG, as pack paths. */
+const SEQUENCES = [
+  { name: "hello", frames: "sprite/hello/", animation: "sprite/Anki-tan_hello_240px.png" },
+  { name: "idle", frames: "sprite/idle/", animation: "sprite/Anki-tan_idle_240px.png" },
+];
 
 function json(path: string): any {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-/** The master folder under static/ for a companion id. */
-export function folder(id: string): string {
-  const chibi = id.endsWith("_chibi");
-  const base = (chibi ? id.slice(0, -"_chibi".length) : id).replaceAll("_", "-");
-  return chibi ? `${base}/chibi` : base;
+/** Art's manifest. */
+export function manifest(art: string): Manifest {
+  return json(join(art, MANIFEST));
 }
 
-/** The master file for `pose` in `dir`, or undefined. */
-export function master(dir: string, pose: string): string | undefined {
-  // A folder with poses.json lists its files; otherwise the file names.
-  const listed = join(dir, LISTED);
-  if (existsSync(listed)) {
-    const file = json(listed).poses?.[pose];
-    if (file !== undefined) {
-      const path = join(dir, file);
-      return existsSync(path) ? path : undefined;
-    }
+/** The licence `spdx` as the page shows it; an unknown one fails. */
+export function licenceName(spdx: string): string {
+  const name = LICENCES[spdx];
+  if (name === undefined) {
+    throw new Error(`manifest.json: licence ${spdx} is unknown; add it to LICENCES in src/art.ts`);
   }
-  for (const name of [pose, RENAMES[pose]]) {
-    if (name === undefined) {
+  return name;
+}
+
+/** A pose name as words: streak_hot becomes "streak hot". */
+export function words(name: string): string {
+  return name.replaceAll("_", " ");
+}
+
+/** Every picture under `dir`, sorted, skipping the folders in `skip`. */
+export function pictures(dir: string, skip: Set<string> = new Set()): string[] {
+  const found: string[] = [];
+  for (const name of readdirSync(dir).sort()) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) {
+      if (!skip.has(path) && name !== ".git") {
+        found.push(...pictures(path, skip));
+      }
       continue;
     }
-    const path = join(dir, `${name}.png`);
-    if (existsSync(path)) {
-      return path;
+    if (IMAGE.test(name)) {
+      found.push(path);
     }
   }
-  return undefined;
+  return found;
 }
 
-/** The status of `pose` in `dir`, following extension fallbacks. */
-export function status(dir: string, list: PoseList, pose: string): Status {
-  const file = master(dir, pose);
+/** The status of `pose` among `drawn` (pose name to file), following fallbacks. */
+export function status(drawn: Map<string, string>, list: PoseList, pose: string, issue?: string): Status {
+  const file = drawn.get(pose);
   if (file !== undefined) {
     return { state: "drawn", file };
   }
@@ -321,13 +284,13 @@ export function status(dir: string, list: PoseList, pose: string): Status {
   // Walk the chain; the fixture guarantees it ends at a core pose.
   let next = list.extensions[pose];
   while (next !== undefined) {
-    const found = master(dir, next);
+    const found = drawn.get(next);
     if (found !== undefined) {
       return { state: "fallback", pose: next, file: found };
     }
     next = list.extensions[next];
   }
-  return { state: "missing" };
+  return { state: "missing", issue };
 }
 
 /** Each pose and the moods that show it, from the mood cases. */
@@ -343,269 +306,253 @@ export function moods(server: string): Map<string, string[]> {
   return shown;
 }
 
-/** Every picture under `dir`, skipping the folders in `skip`, sorted. */
-export function pictures(dir: string, skip: Set<string> = new Set()): string[] {
-  const found: string[] = [];
-  for (const name of readdirSync(dir).sort()) {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) {
-      if (!skip.has(path)) {
-        found.push(...pictures(path, skip));
-      }
-      continue;
-    }
-    if (IMAGE.test(name)) {
-      found.push(path);
-    }
-  }
-  return found;
-}
-
-/** README text as plain text: links as their words, no code marks. */
-function plain(markdown: string): string {
-  return markdown
-    .replace(/\[([^\]]*)\]\((https:[^)]*)\)/g, "$1 ($2)")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replaceAll("`", "");
-}
-
-/** The short name of the licence `text` gives, or undefined. */
-function licenceIn(text: string): string | undefined {
-  return LICENCES.find(([pattern]) => pattern.test(text))?.[1];
-}
-
-/** The credit a LICENSE gives: its first two paragraphs. */
-function licenceCredit(server: string, path: string): Credit {
-  const [who = "", terms = ""] = readFileSync(path, "utf8").trim().split(/\n\s*\n/);
-  const text = `${who} ${terms}`.replace(/\s+/g, " ").trim();
-  return credited(server, path, text);
-}
-
-/** The credit a README gives: its sentences about credit and licence. */
-function readmeCredit(server: string, path: string): Credit | undefined {
-  // Prose only: no headings or table rows.
-  const prose = readFileSync(path, "utf8")
-    .split("\n")
-    .filter((line) => !line.startsWith("#") && !line.startsWith("|"))
-    .join(" ");
-  const sentences = plain(prose)
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(/(?<=\.)\s+/)
-    .filter((sentence) => CREDIT_LINE.test(sentence));
-  if (sentences.length === 0) {
-    return undefined;
-  }
-  return credited(server, path, sentences.join(" "));
-}
-
-/** A credit from `path`, which must name a licence. */
-function credited(server: string, path: string, text: string): Credit {
-  const licence = licenceIn(text);
-  if (licence === undefined) {
-    throw new Error(`${path} names no licence the gallery knows`);
-  }
-  return { source: relative(join(server, "static"), path), text, licence };
+/** A Shigeyuki pack file: where it is in Art and who uses it. */
+interface PackFile {
+  file: string;
+  uses: string[];
 }
 
 /**
- * The credit for a picture: the nearest LICENSE, else README, from its
- * folder up to the companion's; else AnkiQuest-Server's licence.
+ * Shigeyuki's pack as he made it, by pack path: the masters taken from it
+ * and the rest under the archive's pack folder. A master that copies a
+ * pack file another master holds adds its use to that file.
  */
-export function creditFor(server: string, top: string, path: string): Credit {
-  for (let dir = dirname(path); ; dir = dirname(dir)) {
-    const licence = join(dir, "LICENSE");
-    if (existsSync(licence)) {
-      return licenceCredit(server, licence);
-    }
-    const readme = join(dir, "README.md");
-    const found = existsSync(readme) ? readmeCredit(server, readme) : undefined;
-    if (found !== undefined) {
-      return found;
-    }
-    if (dir === top || dir === dirname(dir)) {
-      break;
-    }
-  }
-  const text = `AnkiQuest-Server's licence, ${SERVER_LICENCE}: ${SERVER_LICENCE_URL}`;
-  return { source: "", text, licence: SERVER_LICENCE };
-}
-
-/** The rule for `file` (relative to its folder): its own key, else the longest folder key. */
-function ruleFor(rules: Record<string, Rule>, file: string): Rule | undefined {
-  const own = rules[file];
-  if (own !== undefined) {
-    return own;
-  }
-  const folders = Object.keys(rules)
-    .filter((key) => key.endsWith("/") && file.startsWith(key))
-    .sort((a, b) => b.length - a.length);
-  return folders.length > 0 ? rules[folders[0]] : undefined;
-}
-
-/** Where `rule` files a picture; an older file is compared with its replacement. */
-function placeOf(dir: string, rule: Rule, path: string): Place {
-  if (rule.group !== "older") {
-    return rule;
-  }
-  const replacement = join(dir, rule.replacedBy);
-  const copy: Copy = readFileSync(path).equals(readFileSync(replacement)) ? "same" : "changed";
-  return { ...rule, copy };
-}
-
-/** Rule keys and replacements that name no file: stale rules fail too. */
-function staleRules(dir: string, rules: Record<string, Rule>): string[] {
-  const stale: string[] = [];
-  for (const [key, rule] of Object.entries(rules)) {
-    if (!existsSync(join(dir, key))) {
-      stale.push(`${key} (no such file)`);
-    }
-    if (rule.group === "older" && !existsSync(join(dir, rule.replacedBy))) {
-      stale.push(`${key} (replaced by ${rule.replacedBy}, no such file)`);
-    }
-  }
-  return stale;
-}
-
-/**
- * Files every picture in `dir` into exactly one group: a pose master by the
- * pose list, any other by `rules`. Throws on a picture no rule files, on a
- * pose master a file rule also names, and on rules that name no file.
- */
-export function classify(
-  server: string,
-  dir: string,
-  poses: Pose[],
-  rules: Record<string, Rule>,
-  skip: Set<string> = new Set(),
-): Picture[] {
-  // Pose masters and the poses each shows.
-  const masters = new Map<string, string[]>();
-  for (const pose of poses) {
-    if (pose.status.state === "drawn") {
-      masters.set(pose.status.file, [...(masters.get(pose.status.file) ?? []), pose.name]);
-    }
-  }
-
-  const problems = staleRules(dir, rules);
-  const out: Picture[] = [];
-  for (const path of pictures(dir, skip)) {
-    const file = relative(dir, path);
-    const shown = masters.get(path);
-    const credit = creditFor(server, dir, path);
-    const stored = relative(join(server, "static"), path);
-
-    // A pose master is a pose; a file rule naming it too is a conflict.
-    if (shown !== undefined) {
-      if (rules[file] !== undefined) {
-        problems.push(`${file} (a pose master and a file rule)`);
-      }
-      out.push({ file: stored, name: file, path, place: { group: "pose", poses: shown }, credit });
+export function packFiles(art: string, data: Manifest): Map<string, PackFile> {
+  const files = new Map<string, PackFile>();
+  for (const entry of data.masters) {
+    if (entry.pack === undefined) {
       continue;
     }
-
-    const rule = ruleFor(rules, file);
-    if (rule === undefined) {
-      problems.push(`${file} (no group)`);
-      continue;
+    const use = `${NAMES[entry.companion] ?? entry.companion}: ${words(entry.pose)}`;
+    const known = files.get(entry.pack);
+    if (known !== undefined && !readFileSync(join(art, known.file)).equals(readFileSync(join(art, entry.file)))) {
+      throw new Error(`${known.file} and ${entry.file} both name pack ${entry.pack} but differ`);
     }
-    out.push({ file: stored, name: file, path, place: placeOf(dir, rule, path), credit });
+    if (known === undefined) {
+      files.set(entry.pack, { file: entry.file, uses: [use] });
+    } else {
+      known.uses.push(use);
+    }
   }
 
-  if (problems.length > 0) {
-    const where = `static/${relative(join(server, "static"), dir)}`;
-    throw new Error(`${where}: ${problems.join(", ")}; file each picture in RULES in src/art.ts`);
+  const folder = data.archive.pack.folder;
+  for (const path of pictures(join(art, folder))) {
+    const pack = relative(join(art, folder), path);
+    if (files.has(pack)) {
+      throw new Error(`${folder}${pack} is also a master; the pack keeps each file once`);
+    }
+    files.set(pack, { file: relative(art, path), uses: [] });
   }
-  return out;
+  return new Map([...files].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
-/** The animations in `folder`, with paths relative to static/. */
-function sequences(dir: string, folder: string): Sequence[] {
-  return (SEQUENCES[folder] ?? []).map((sequence) => {
-    for (const part of [sequence.frames, sequence.animation]) {
-      if (!existsSync(join(dir, part))) {
-        throw new Error(`static/${folder}/${part} is missing; update SEQUENCES in src/art.ts`);
-      }
+/** The card for a master. */
+function masterPicture(art: string, entry: Entry, poses: string[], notes: Record<string, string>): Picture {
+  const note = entry.kind === "picture" ? notes[entry.file] : poses.map(words).join(", ");
+  if (note === undefined) {
+    throw new Error(`${entry.file} is a picture with no note; add it to NOTES in src/art.ts`);
+  }
+  return {
+    file: entry.file,
+    path: join(art, entry.file),
+    name: entry.file,
+    origin: entry.origin,
+    author: entry.author,
+    licence: licenceName(entry.licence),
+    note,
+    poses,
+  };
+}
+
+/** The card for a file of Shigeyuki's pack. */
+function packPicture(art: string, pack: string, file: PackFile, credit: PackEntry): Picture {
+  return {
+    file: file.file,
+    path: join(art, file.file),
+    name: pack,
+    origin: "shigeyuki",
+    author: credit.author,
+    licence: licenceName(credit.licence),
+    note: file.uses.length > 0 ? `Used for ${file.uses.join("; ")}` : "",
+    poses: [],
+  };
+}
+
+/** Shigeyuki's animations, from the pack files. */
+function sequences(art: string, pack: Map<string, PackFile>, credit: PackEntry): Sequence[] {
+  return SEQUENCES.map((sequence) => {
+    const animation = pack.get(sequence.animation);
+    const frames = [...pack].filter(([name]) => name.startsWith(sequence.frames));
+    if (animation === undefined || frames.length === 0) {
+      throw new Error(`pack ${sequence.frames} or ${sequence.animation} is missing; update SEQUENCES in src/art.ts`);
     }
     return {
       name: sequence.name,
-      frames: `${folder}/${sequence.frames}`,
-      animation: `${folder}/${sequence.animation}`,
+      frames: frames.map(([name, file]) => packPicture(art, name, file, credit)),
+      animation: packPicture(art, sequence.animation, animation, credit),
     };
   });
 }
 
+/** The Art folder of a companion id: `anki_tan_chibi` is `anki-tan/chibi`. */
+export function folder(id: string): string {
+  const chibi = id.endsWith("_chibi");
+  const base = (chibi ? id.slice(0, -"_chibi".length) : id).replaceAll("_", "-");
+  return chibi ? `${base}/chibi` : base;
+}
+
 /**
- * Every companion players can see, in picker order: the starter, then the
- * unlock list, then the shared folders. Secret companions stay hidden, as
- * in the apps; a planned one is listed only once its folder exists. Every
- * folder under static/ must belong to a companion or be shared.
+ * Every companion with art, in picker order (the starter, then the unlock
+ * list), then the shared pictures. A planned companion is shown once Art
+ * has masters for it, as a future companion.
  */
-export function companions(server: string, rules: Rules = RULES): Companion[] {
+export function companions(server: string, art: string, notes: Record<string, string> = NOTES): Companion[] {
   const list: PoseList = json(join(server, POSES));
   const shown = moods(server);
-  const unlocks = [{ companion: STARTER, status: LIVE, secret: false }, ...json(join(server, UNLOCKS)).companions];
-  const static_ = join(server, "static");
+  const data = manifest(art);
+  const unlocks = [{ companion: STARTER, status: LIVE }, ...json(join(server, UNLOCKS)).companions];
 
-  // A folder under static/ that is neither a companion's nor shared fails.
-  const known = new Set([...unlocks.map((entry) => folder(entry.companion).split("/")[0]), ...Object.keys(SHARED)]);
-  const unknown = readdirSync(static_)
-    .filter((name) => statSync(join(static_, name)).isDirectory() && !known.has(name))
-    .map((name) => `static/${name}`);
-  if (unknown.length > 0) {
-    throw new Error(`${unknown.join(", ")}: not a companion's folder; add it to SHARED in src/art.ts`);
+  // Every manifest companion must be one the fixture knows.
+  const known = new Set(unlocks.map((entry) => entry.companion));
+  const strangers = [...new Set(data.masters.map((entry) => entry.companion))].filter((id) => !known.has(id));
+  if (strangers.length > 0) {
+    throw new Error(`manifest.json: ${strangers.join(", ")} not in ${UNLOCKS}`);
   }
 
-  // The folders of listed companions: a nested one is not its parent's.
-  const visible = unlocks.filter((entry) => !entry.secret && existsSync(join(static_, folder(entry.companion))));
-  const owned = new Set(visible.map((entry) => join(static_, folder(entry.companion))));
+  // Every picture in the checkout must be in the manifest.
+  const loose = unlisted(art, data);
+  if (loose.length > 0) {
+    throw new Error(`${loose.join(", ")}: not in manifest.json`);
+  }
+
+  // NOTES must name only listed pictures.
+  const listed = new Set(data.masters.filter((entry) => entry.kind === "picture").map((entry) => entry.file));
+  for (const shared of data.shared) {
+    listed.add(shared.file);
+  }
+  const stale = Object.keys(notes).filter((file) => !listed.has(file));
+  if (stale.length > 0) {
+    throw new Error(`NOTES in src/art.ts names files manifest.json does not list as pictures: ${stale.join(", ")}`);
+  }
+
+  const pack = packFiles(art, data);
+  const credit = data.archive.pack;
 
   const out: Companion[] = [];
-  for (const entry of visible) {
-    const top = folder(entry.companion);
-    const dir = join(static_, top);
-    const stage: Stage = entry.status === LIVE ? "live" : "planned";
+  for (const entry of unlocks) {
+    const id: string = entry.companion;
+    const masters = data.masters.filter((master) => master.companion === id);
+    if (masters.length === 0) {
+      continue;
+    }
 
-    // Core poses in fixture order, then extensions.
-    const pose = (name: string, kind: Kind, fallback?: string): Pose => ({
-      name,
-      kind,
-      fallback,
-      moods: shown.get(name) ?? [],
-      status: status(dir, list, name),
-    });
+    // Poses: core in fixture order, then extensions, each from its master.
+    const drawn = new Map<string, string>();
+    for (const master of masters) {
+      if (master.kind !== "picture") {
+        drawn.set(master.pose, master.file);
+      }
+    }
+    const missing = new Map(data.missing.filter((m) => m.companion === id).map((m) => [m.pose, m.issue]));
+    const pose = (name: string, kind: Kind, fallback?: string): Pose => {
+      const found = status(drawn, list, name, missing.get(name));
+      const file = found.state === "missing" ? undefined : found.file;
+      const origin = masters.find((master) => master.file === file)?.origin;
+      return { name, kind, fallback, moods: shown.get(name) ?? [], status: found, origin };
+    };
     const poses = [
       ...list.core.map((name) => pose(name, "core")),
       ...Object.entries(list.extensions).map(([name, to]) => pose(name, "extension", to)),
     ];
 
-    const skip = new Set([...owned].filter((other) => other !== dir));
-    const licence = join(dir, "LICENSE");
+    // Shigeyuki's originals: the whole pack under its companion, the files it uses under a chibi.
+    const ownPack = masters.filter((master) => master.pack !== undefined).map((master) => master.pack as string);
+    const original = [...pack]
+      .filter(([name]) => (id === credit.companion ? true : ownPack.includes(name)))
+      .map(([name, file]) => packPicture(art, name, file, credit));
+
+    // Our art: masters in use, pose masters first, and the archive's retired pictures.
+    const ours = masters.filter((master) => master.origin !== "shigeyuki");
+    const posesOf = (file: string) => masters.filter((m) => m.file === file && m.kind !== "picture").map((m) => m.pose);
+    const used = [
+      ...ours.filter((master) => master.kind !== "picture"),
+      ...ours.filter((master) => master.kind === "picture"),
+    ].map((master) => masterPicture(art, master, posesOf(master.file), notes));
+    const retired = data.archive.retired
+      .filter((old) => old.companion === id)
+      .map((old) => retiredPicture(art, old));
+
+    const licence = join(art, folder(id), "LICENSE");
+    const top = join(art, folder(id).split("/")[0], "LICENSE");
+    const text = existsSync(licence) ? licence : existsSync(top) ? top : undefined;
     out.push({
-      id: entry.companion,
-      name: NAMES[entry.companion] ?? entry.companion,
-      stage,
+      id,
+      name: NAMES[id] ?? id,
+      stage: entry.status === LIVE ? "live" : "planned",
       poses,
-      pictures: classify(server, dir, poses, rules[top] ?? {}, skip),
-      sequences: sequences(dir, top),
-      licence: existsSync(licence) ? readFileSync(licence, "utf8") : undefined,
+      original,
+      sequences: id === credit.companion ? sequences(art, pack, credit) : [],
+      used,
+      retired,
+      licence: text === undefined ? undefined : readFileSync(text, "utf8"),
     });
   }
 
-  // Shared folders: no poses, every picture by its rules.
-  for (const [name, title] of Object.entries(SHARED)) {
-    const dir = join(static_, name);
-    if (!existsSync(dir)) {
-      continue;
-    }
+  // Shared pictures, under the companions they show.
+  for (const shared of data.shared) {
     out.push({
-      id: name,
-      name: title,
+      id: shared.name,
+      name: shared.shows.map((id) => NAMES[id] ?? id).join(" and "),
       stage: "shared",
       poses: [],
-      pictures: classify(server, dir, [], rules[name] ?? {}),
-      sequences: sequences(dir, name),
+      original: [],
+      sequences: [],
+      used: [
+        {
+          file: shared.file,
+          path: join(art, shared.file),
+          name: shared.file,
+          origin: shared.origin,
+          author: shared.author,
+          licence: licenceName(shared.licence),
+          note: notes[shared.file] ?? "",
+          poses: [],
+        },
+      ],
+      retired: [],
     });
   }
   return out;
+}
+
+/** The card for a retired picture. */
+function retiredPicture(art: string, old: RetiredEntry): Picture {
+  const replaced = `Replaced by ${old.replaced_by}.`;
+  return {
+    file: old.file,
+    path: join(art, old.file),
+    name: old.file,
+    origin: old.origin,
+    author: old.author,
+    licence: licenceName(old.licence),
+    note: old.note ? `${replaced} ${old.note}` : replaced,
+    poses: [old.pose],
+  };
+}
+
+/**
+ * Pictures in the Art checkout the manifest does not account for: every
+ * picture outside docs/ must be a master, a shared or retired picture, or
+ * a file of Shigeyuki's pack.
+ */
+export function unlisted(art: string, data: Manifest): string[] {
+  const listed = new Set([
+    ...data.masters.map((entry) => entry.file),
+    ...data.shared.map((entry) => entry.file),
+    ...data.archive.retired.map((entry) => entry.file),
+  ]);
+  const pack = data.archive.pack.folder;
+  return pictures(art, new Set([join(art, DOCS)]))
+    .map((path) => relative(art, path))
+    .filter((file) => !listed.has(file) && !file.startsWith(pack));
 }

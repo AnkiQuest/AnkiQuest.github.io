@@ -15,7 +15,11 @@ node src/build.ts server art _site                 # runs cargo in server/
 node src/build.ts server art _site coverage.json   # or reads the JSON from a file
 ```
 
-Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`; the first form also needs `cargo`. `npm test` checks how the JSON and Art's manifest become pages. The `pages` workflow builds and deploys on every push to `master`.
+Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`; the first form also needs `cargo`. `npm test` checks how the JSON and Art's manifest become pages, and the mapping tool. The `pages` workflow builds and deploys on every push to `master`.
+
+## Mapping tool
+
+`mapping.html` chooses which picture of Art each companion shows for every slot: the poses of AnkiQuest-Server's `tests/fixtures/companion_poses.json` (core moods, extensions, launcher icons, moment and notification pictures) and the monochrome launcher icon its exporter makes. Each row says in plain words where the apps show the slot (`src/slots.ts`; a new pose without a note there fails the build) and its framing rule: head only for the face and launcher icons, full body for the rest, warned about, not blocked, when a master's `framing` in `manifest.json` disagrees. A click on a cell opens a picker of every picture in Art, archive and Shigeyuki's pack included. Changes stay in the page, with a draft in the browser's storage; the page lists them against `manifest.json` and exports JSON in the shape of its `masters` (`from` names an archive picture to copy to `file`), to attach to a pull request or issue in AnkiQuest-Art or hand to an agent. The build writes its data to `mapping.json` (`src/mapping.ts`); `site/mapping.ts` is the page's script.
 
 ## Wiring map
 

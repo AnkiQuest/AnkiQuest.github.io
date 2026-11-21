@@ -1,0 +1,426 @@
+/* The mapping tool, on top of style.css's tokens. Changed cells and
+   warnings carry a word as well as a colour, so colour is never the only
+   sign. */
+:root {
+  --changed: #1d4ed8;
+  --warn: #a16207;
+  --focus: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --changed: #93c5fd;
+    --warn: #facc15;
+    --focus: #93c5fd;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+select,
+input[type="search"],
+.file {
+  min-height: 36px;
+  padding: 4px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Tags in cells and the legend: changed, and warnings that do not block. */
+.tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.tag.changed {
+  border: 1px solid var(--changed);
+  color: var(--changed);
+}
+
+.tag.warn,
+.warn {
+  color: var(--warn);
+}
+
+.tag.warn {
+  border: 1px solid var(--warn);
+}
+
+/* The grid scrolls sideways in its own box; slot names stay in view on wide screens. */
+.mapping-wrap {
+  max-width: 100%;
+  margin-top: 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.mapping {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.mapping th,
+.mapping td {
+  padding: 4px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.mapping thead th {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.mapping th small,
+.mapping th .explain {
+  display: block;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.mapping th .explain {
+  margin: 2px 0;
+  color: var(--ink);
+}
+
+.mapping th[scope="row"],
+.mapping thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg);
+  text-align: left;
+  width: 300px;
+  min-width: 300px;
+  font-weight: normal;
+}
+
+.mapping th[scope="row"] code {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.mapping .group th {
+  padding-top: 16px;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.mapping .group th small {
+  max-width: 70ch;
+}
+
+.mapping td {
+  width: 96px;
+  min-width: 96px;
+  text-align: center;
+}
+
+/* A cell is one button: the picture, the fallback it shows, or "missing". */
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 0;
+  padding: 4px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  line-height: 1.2;
+}
+
+.cell:hover {
+  border-color: var(--line);
+  background: var(--card);
+}
+
+.cell img,
+.cell .blank {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: var(--tile);
+  border-radius: 8px;
+}
+
+.fallback .cell img {
+  opacity: 0.45;
+  outline: 1px dashed var(--muted);
+  outline-offset: -1px;
+}
+
+.cell .note {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.cell .blank {
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--missing);
+  color: var(--missing);
+}
+
+.is-changed .cell {
+  border-color: var(--changed);
+}
+
+/* The legend reuses the matrix's look. */
+.legend .tag {
+  font-size: 0.85rem;
+}
+
+/* Changes against manifest.json. */
+.changes {
+  margin: 8px 0 0;
+  padding-left: 1.4em;
+}
+
+.changes li {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+
+.changes .undo {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.8rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.file input {
+  max-width: 220px;
+  font-size: 0.8rem;
+}
+
+/* The picker: filters, a large preview and every picture. */
+#picker {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 16px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+#picker::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.picker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.picker-head h2 {
+  margin: 0;
+}
+
+#picker-about p {
+  margin: 8px 0;
+  max-width: 80ch;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+
+.filters select {
+  max-width: 260px;
+}
+
+.picker-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.preview {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) 1fr;
+  gap: 12px;
+  align-items: start;
+  align-content: start;
+  align-self: start;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.preview > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.preview img {
+  width: 100%;
+  height: auto;
+  background: var(--tile);
+  border-radius: 8px;
+}
+
+.preview p {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.preview .credit {
+  font-size: 0.85rem;
+}
+
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.pick img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  background: var(--tile);
+  border-radius: 6px;
+}
+
+.pick small {
+  color: var(--muted);
+}
+
+.pick[aria-pressed="true"] {
+  border: 2px solid var(--accent);
+}
+
+@media (min-width: 800px) {
+  .picker-body {
+    grid-template-columns: 1fr 340px;
+  }
+
+  .picker-body .preview {
+    order: 2;
+    position: sticky;
+    top: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .preview img {
+    max-height: 260px;
+    object-fit: contain;
+  }
+}
+
+/* Phones: slot names scroll with the grid, so the pictures get the width. */
+@media (max-width: 700px) {
+  .mapping th[scope="row"],
+  .mapping thead th:first-child {
+    position: static;
+    width: 200px;
+    min-width: 200px;
+  }
+
+  .mapping td {
+    width: 84px;
+    min-width: 84px;
+  }
+
+  .cell img,
+  .cell .blank {
+    width: 64px;
+    height: 64px;
+  }
+
+  #picker {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .preview {
+    grid-template-columns: 120px 1fr;
+  }
+}

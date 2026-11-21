@@ -11,7 +11,7 @@ import { licence as licenceOf, originName, type PackEntry, type Picture, type Re
 export const FILES = "files";
 
 /** Pages with fixed names; a companion id must not take one. */
-const FIXED = new Set(["index", "archive", "wiring"]);
+const FIXED = new Set(["index", "archive", "wiring", "mapping"]);
 
 /** The issues that track the drawings still needed, by kind. */
 const ISSUES: Record<string, number> = {
@@ -50,6 +50,8 @@ export interface Image {
 /** Where a picture is on the site (the master, a matrix thumbnail and a card preview) and who to credit. */
 export interface Shown {
   href: string;
+  /** The full picture's width and height. */
+  size: [number, number];
   thumb: Image;
   card: Image;
   picture: Picture;
@@ -134,10 +136,10 @@ function img(image: Image, alt: string): string {
   return `<img src="${esc(image.src)}" alt="${esc(alt)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async">`;
 }
 
-/** The page frame: head, the navigation and `body`. */
-function layout(coverage: Coverage, title: string, description: string, body: string): string {
+/** The page frame: head (with `head` added), the navigation and `body`. */
+function layout(coverage: Coverage, title: string, description: string, body: string, head = ""): string {
   const companions = coverage.companions.map((c) => `<a href="${esc(pageName(c))}">${esc(c.name)}</a>`);
-  const links = [`<a href="index.html">Matrix</a>`, ...companions, `<a href="archive.html">Archive</a>`, `<a href="wiring.html">Wiring</a>`];
+  const links = [`<a href="index.html">Matrix</a>`, ...companions, `<a href="archive.html">Archive</a>`, `<a href="mapping.html">Mapping</a>`, `<a href="wiring.html">Wiring</a>`];
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -147,7 +149,7 @@ function layout(coverage: Coverage, title: string, description: string, body: st
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="stylesheet" href="style.css">
-</head>
+${head}</head>
 <body>
 <header>
 <p class="site"><a href="https://ankiquest.org">AnkiQuest</a> companions</p>
@@ -244,6 +246,7 @@ ${groups.join("\n")}
 </div>
 ${planned}
 <p>Each companion's page lists what it is missing and why, and who drew each picture: Shigeyuki's original Anki-tan art, or art AnkiQuest made. Shigeyuki's pack as he made it and our retired pictures are in the <a href="archive.html">archive</a>, apart from current art.</p>
+<p>To choose which picture each companion shows for each pose, icon and moment picture, use the <a href="mapping.html">mapping tool</a> and export the result for AnkiQuest-Art.</p>
 ${together}`;
   return layout(coverage, "AnkiQuest art matrix", "Every AnkiQuest companion by every pose: drawn, fallback or missing.", body);
 }
@@ -481,4 +484,52 @@ export function firstParagraph(markdown: string): string {
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replaceAll("`", "")
     .replace(/\s+/g, " ");
+}
+
+/**
+ * The mapping tool's page: the frame and the controls; mapping.js fills in
+ * the grid and the picker from mapping.json.
+ */
+export function mappingPage(coverage: Coverage): string {
+  const head = `<link rel="stylesheet" href="mapping.css">
+<script type="module" src="mapping.js"></script>
+`;
+  const body = `<h1>Mapping tool</h1>
+<p>Choose which picture of AnkiQuest-Art each companion shows for every slot: the poses for each streak mood, the launcher icons and the moment and notification pictures. Each row says in plain words where the apps show that slot and which framing it needs. Click a cell to pick any picture in Art: the masters, retired pictures and Shigeyuki's pack (emoji, illustrations, stickers and sprite frames). Set a slot to missing to make it show its fallback. The picker's filters stay as you leave them between cells, to work through one folder.</p>
+<p>The grid starts as Art's <code>manifest.json</code> maps it. Your changes stay in this page and are kept as a draft in this browser until you reset them. Nothing is saved anywhere else: export the mapping when you are done.</p>
+<p id="summary" role="status">Loading mapping.json…</p>
+<p class="legend"><span class="present">picture chosen</span> <span class="fallback">falls back to another slot</span> <span class="missing">missing: shows nothing</span> <span class="tag changed">changed</span> <span class="tag warn">! framing or other companion: a warning, not a block</span></p>
+<div id="grid" class="mapping-wrap" tabindex="0" aria-label="Slots by companion, scrolls sideways"></div>
+
+<section id="diff" aria-labelledby="diff-title">
+<h2 id="diff-title">Changes against manifest.json <span id="change-count"></span></h2>
+<ul id="changes" class="changes"></ul>
+<p><button type="button" id="reset-all">Undo every change</button></p>
+</section>
+
+<section id="export" aria-labelledby="export-title">
+<h2 id="export-title">Export</h2>
+<p>The export is JSON in the shape of <code>manifest.json</code>'s <code>masters</code>: one entry per companion and slot with a picture (companion, pose, kind, file, licence, origin, author), and <code>from</code> where the picture comes from <code>archive/</code> and has to be copied to <code>file</code>. Core poses left without a picture are in <code>missing</code>.</p>
+<p>What to do with it: attach the file to a pull request or issue in <a href="https://github.com/AnkiQuest/AnkiQuest-Art">AnkiQuest-Art</a>, or hand it to an agent and ask it to apply the mapping to Art. Import a file exported before to keep working on it.</p>
+<p class="actions"><button type="button" id="download" class="primary">Download mapping JSON</button> <button type="button" id="copy">Copy JSON</button> <label class="file">Import a mapping <input type="file" id="import" accept="application/json,.json"></label></p>
+<p id="status" role="status" aria-live="polite"></p>
+</section>
+
+<dialog id="picker" aria-labelledby="picker-title">
+<div class="picker-head"><h2 id="picker-title">Picture</h2><button type="button" id="picker-close" aria-label="Close the picker">Close</button></div>
+<div id="picker-about"></div>
+<p class="actions"><button type="button" id="set-missing">Set to missing</button> <button type="button" id="reset-one">Reset to manifest.json</button></p>
+<div class="filters">
+<label>Search <input type="search" id="filter-text" placeholder="file or folder name"></label>
+<label>Folder <select id="filter-folder"></select></label>
+<label>Companion <select id="filter-companion"></select></label>
+<label>Framing <select id="filter-framing"><option value="">Any framing</option><option value="full_body">Full body</option><option value="bust">Head and shoulders</option><option value="headshot">Head only</option><option value="unknown">Unknown</option></select></label>
+<button type="button" id="filter-clear">Clear filters</button>
+</div>
+<div class="picker-body">
+<div id="preview" class="preview" aria-live="polite"></div>
+<div><p id="result-count" class="muted"></p><ul id="results" class="results" aria-label="Pictures in AnkiQuest-Art"></ul></div>
+</div>
+</dialog>`;
+  return layout(coverage, "AnkiQuest mapping tool", "Choose the picture each AnkiQuest companion shows for every pose, launcher icon and moment picture, and export it for AnkiQuest-Art.", body, head);
 }

@@ -7,7 +7,7 @@ import { test } from "node:test";
 
 import { documents, files, parse, type Coverage } from "./coverage.ts";
 import type { Origin } from "./manifest.ts";
-import { archivePage, companionPage, esc, issueFor, matrixPage, pageName, type ArtArchive, type Look } from "./pages.ts";
+import { archivePage, companionPage, esc, issueFor, mappingPage, matrixPage, pageName, type ArtArchive, type Look } from "./pages.ts";
 
 /** A small matrix in the shape `art-coverage --json` prints. */
 const COVERAGE: Coverage = {
@@ -113,6 +113,7 @@ const look: Look = (file) => {
   const made = origin(file);
   return {
     href: `files/${file}`,
+    size: [640, 640],
     thumb: { src: `thumbs/${file}.webp`, width: 160, height: 160 },
     card: { src: `cards/${file}.webp`, width: 320, height: 320 },
     picture: {
@@ -364,4 +365,16 @@ test("page names: one file per companion; a clash with a fixed page fails", () =
 
 test("escapes markup", () => {
   assert.equal(esc(`<a href="x">&'`), "&#60;a href=&#34;x&#34;&#62;&#38;&#39;");
+});
+
+test("the mapping page loads its script, explains the export and is linked from every page", () => {
+  const page = mappingPage(COVERAGE);
+  assert.match(page, /<script type="module" src="mapping.js"><\/script>/);
+  assert.match(page, /<dialog id="picker" aria-labelledby="picker-title">/);
+  assert.match(page, /attach the file to a pull request or issue in <a href="https:\/\/github.com\/AnkiQuest\/AnkiQuest-Art">AnkiQuest-Art<\/a>, or hand it to an agent/);
+  for (const html of [page, matrixPage(COVERAGE, look)]) {
+    assert.match(html, /<a href="mapping.html">Mapping<\/a>/);
+  }
+  assert.match(matrixPage(COVERAGE, look), /use the <a href="mapping.html">mapping tool<\/a>/);
+  assert.throws(() => pageName({ ...COVERAGE.companions[0], id: "mapping" }), /clashes/);
 });

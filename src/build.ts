@@ -6,22 +6,25 @@
 // Art, copies it and the licences and READMEs byte for byte under
 // files/<Art path>, makes two WebP previews of each picture (matrix and card
 // size) and writes the matrix, a page per companion and the archive
-// (Shigeyuki's pack and our retired art). Previews need cwebp
+// (Shigeyuki's pack and our retired art), and the mapping tool's data
+// from Server's pose list and every picture of Art. Previews need cwebp
 // (Debian/Ubuntu package webp).
 
 import { execFileSync } from "node:child_process";
-import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { documents, files, parse, type Coverage } from "./coverage.ts";
 import { hash, localize, packUsed, pictures as artPictures, readManifest, walk, type Manifest, type Picture } from "./manifest.ts";
+import { mappingData } from "./mapping.ts";
 import {
   archivePage,
   companionPage,
   fileHref,
   firstParagraph,
+  mappingPage,
   matrixPage,
   pageName,
   type ArtArchive,
@@ -31,10 +34,14 @@ import {
 } from "./pages.ts";
 
 /** The files under site/ copied next to the pages. */
-const ASSETS = ["style.css", "wiring.html", "wiring.css"];
+const ASSETS = ["style.css", "wiring.html", "wiring.css", "mapping.css"];
 
-/** The wiring page's script, in TypeScript under site/, stripped to JavaScript on the site. */
-const WIRING_SCRIPT = "wiring.ts";
+/** The pages' scripts, in TypeScript under site/, stripped to JavaScript on the site. */
+const SCRIPTS = ["wiring.ts", "mapping.ts"];
+
+/** Server's pose list and streak moods, which the mapping tool's slots come from. */
+const POSES = "tests/fixtures/companion_poses.json";
+const MOODS = "tests/fixtures/streak_moods.json";
 
 /** The wiring map's data, at the repository root, written by src/wiring.ts. */
 const WIRING_DATA = "wiring.json";
@@ -136,6 +143,7 @@ function pictures(art: string, out: string, list: string[], known: Map<string, P
     const base = `${PREVIEWS}/${file.replace(/\.png$/i, "")}`;
     shown.set(file, {
       href: fileHref(file),
+      size,
       thumb: preview(master, out, `${base}-${THUMB_WIDTH}.webp`, size, THUMB_WIDTH),
       card: preview(master, out, `${base}-${CARD_WIDTH}.webp`, size, CARD_WIDTH),
       picture,
@@ -172,6 +180,15 @@ function artArchive(art: string, data: Manifest): ArtArchive {
   };
 }
 
+/** The commit the Art checkout is on, or null when git cannot tell. */
+function artCommit(art: string): string | null {
+  try {
+    return execFileSync("git", ["-C", art, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return null;
+  }
+}
+
 /** Builds the site into `out`, replacing what was there. */
 export function build(server: string, art: string, out: string, coverageFile?: string): void {
   const data = readManifest(art);
@@ -181,10 +198,12 @@ export function build(server: string, art: string, out: string, coverageFile?: s
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
 
-  // Pictures, licence texts and READMEs, as Art lays them out.
+  // Pictures, licence texts and READMEs, as Art lays them out: every
+  // picture of Art, since the mapping tool offers each.
   const list = [
     ...new Set([
       ...files(coverage),
+      ...data.masters.map((entry) => entry.file),
       ...data.shared.map((entry) => entry.file),
       ...archive.packFiles,
       ...archive.retired.map((entry) => entry.file),
@@ -215,9 +234,17 @@ export function build(server: string, art: string, out: string, coverageFile?: s
   for (const asset of ASSETS) {
     copyFileSync(join(site, asset), join(out, asset));
   }
-  const script = readFileSync(join(site, WIRING_SCRIPT), "utf8");
-  writeFileSync(join(out, WIRING_SCRIPT.replace(/\.ts$/, ".js")), stripTypeScriptTypes(script));
+  for (const script of SCRIPTS) {
+    writeFileSync(join(out, script.replace(/\.ts$/, ".js")), stripTypeScriptTypes(readFileSync(join(site, script), "utf8")));
+  }
   copyFileSync(join(site, "..", WIRING_DATA), join(out, WIRING_DATA));
+
+  // The mapping tool: every slot by every companion, and every picture of Art.
+  const poses = JSON.parse(readFileSync(join(server, POSES), "utf8"));
+  const moods = JSON.parse(readFileSync(join(server, MOODS), "utf8"));
+  const mapping = mappingData(data, shown, (file) => statSync(join(art, file)).size, coverage.companions, poses, moods, artCommit(art));
+  writeFileSync(join(out, "mapping.json"), JSON.stringify(mapping));
+  writeFileSync(join(out, "mapping.html"), mappingPage(coverage));
 
   // What each companion is missing, so a run shows the backlog.
   for (const companion of coverage.companions) {

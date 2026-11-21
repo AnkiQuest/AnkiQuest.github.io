@@ -10,7 +10,7 @@
 // lane by a fixed rule. Fan-out kinds (flake inputs, reusable workflows,
 // AGENTS.md) are off by default and shown as badges on the repositories.
 
-import type { EdgeKind, Status, Wiring, WiringEdge, WiringNode } from "../src/wiring-model.ts";
+import type { EdgeKind, Status, Wiring, WiringEdge, WiringFact, WiringNode } from "../src/wiring-model.ts";
 
 /** Each edge kind's name in the filters, legend and table, in order. */
 export const KIND_NAMES: Record<EdgeKind, string> = {
@@ -98,8 +98,8 @@ export interface Filter {
   search: string;
 }
 
-/** An edge's status in words, with the commit count when there is one. */
-export function statusText(edge: WiringEdge): string {
+/** An edge's or a fact's status in words, with the commit count when there is one. */
+export function statusText(edge: Pick<WiringFact, "status" | "behind">): string {
   const name = STATUS_NAMES[edge.status];
   if (edge.status === "behind" && edge.behind !== undefined) {
     return `${name}: ${edge.behind} commit${edge.behind === 1 ? "" : "s"} behind`;
@@ -113,12 +113,20 @@ export function matches(node: WiringNode, search: string): boolean {
   return text.includes(search.trim().toLowerCase());
 }
 
-/** The edges the filters let through; a search keeps edges touching a matching node or label. */
+/** Whether any of an edge's kinds is shown. */
+export function shownEdge(edge: WiringEdge, kinds: Set<EdgeKind>): boolean {
+  return edge.kinds.some((kind) => kinds.has(kind));
+}
+
+/**
+ * The edges the filters let through: those with any shown kind; a search
+ * keeps edges touching a matching node or with a matching label.
+ */
 export function visibleEdges(map: Wiring, filter: Filter): WiringEdge[] {
   const byId = new Map(map.nodes.map((node) => [node.id, node]));
   const search = filter.search.trim().toLowerCase();
   return map.edges.filter((edge) => {
-    if (!filter.kinds.has(edge.kind)) {
+    if (!shownEdge(edge, filter.kinds)) {
       return false;
     }
     if (filter.outdated && edge.status !== "behind") {
@@ -128,7 +136,7 @@ export function visibleEdges(map: Wiring, filter: Filter): WiringEdge[] {
       return true;
     }
     const ends = [byId.get(edge.from), byId.get(edge.to)].filter((node): node is WiringNode => node !== undefined);
-    return ends.some((node) => matches(node, search)) || edge.label.toLowerCase().includes(search);
+    return ends.some((node) => matches(node, search)) || [edge.label, ...edge.facts.map((fact) => fact.label)].some((label) => label.toLowerCase().includes(search));
   });
 }
 
@@ -260,7 +268,7 @@ export function fallbackLane(map: Wiring, node: WiringNode): Lane {
     case "repo":
       return "infra";
     case "package": {
-      const publisher = map.edges.find((edge) => edge.kind === "publishes" && edge.to === node.id)?.from;
+      const publisher = map.edges.find((edge) => edge.kinds.includes("publishes") && edge.to === node.id)?.from;
       const owner = map.nodes.find((candidate) => candidate.id === publisher);
       if (!owner || owner.kind === "package") {
         return "core";
@@ -386,9 +394,9 @@ function shortName(id: string): string {
 /** Statuses from worst to best: a group of edges shows its worst. */
 const SEVERITY: Status[] = ["behind", "unknown", "planned", "current", "none"];
 
-/** The worst status of some edges. */
-function worst(edges: WiringEdge[]): Status {
-  return SEVERITY.find((name) => edges.some((edge) => edge.status === name)) ?? "none";
+/** The worst status of some facts. */
+function worst(facts: Pick<WiringFact, "status">[]): Status {
+  return SEVERITY.find((name) => facts.some((fact) => fact.status === name)) ?? "none";
 }
 
 /** A count and a noun: "flake", "4 workflows". */
@@ -398,7 +406,7 @@ function counted(kind: EdgeKind, count: number): string {
 }
 
 /** A badge piece's status mark, after a space, or nothing. */
-function marked(edges: WiringEdge[]): string {
+function marked(edges: WiringFact[]): string {
   const mark = STATUS_MARKS[worst(edges)];
   return mark ? ` ${mark}` : "";
 }
@@ -418,7 +426,9 @@ function groupBy<T>(items: T[], key: (item: T) => string): T[][] {
  * out to two or more nodes: "AGENTS.md → 13 (12 !)".
  */
 export function badge(map: Wiring, id: string, shown: Set<EdgeKind>): string[] {
-  const hidden = map.edges.filter((edge) => !shown.has(edge.kind) && edge.from !== edge.to);
+  const hidden = map.edges
+    .filter((edge) => !shownEdge(edge, shown) && edge.from !== edge.to)
+    .flatMap((edge) => edge.facts.map((fact) => ({ ...fact, from: edge.from, to: edge.to })));
   const pieces: string[] = [];
 
   // What the node takes, by source: AGENTS.md alone, as it always comes from AnkiQuest-Agents.
@@ -452,24 +462,31 @@ export function badge(map: Wiring, id: string, shown: Set<EdgeKind>): string[] {
   return lines;
 }
 
-/** The edges between one pair of nodes of one kind, drawn as one line. */
+/** One edge drawn as a line, in the colour and style of its first shown kind. */
 export interface Line {
   from: string;
   to: string;
   kind: EdgeKind;
-  edges: WiringEdge[];
+  edge: WiringEdge;
   status: Status;
   mark: string;
 }
 
-/** Groups edges by kind and ends; the line's status is its worst edge's, its mark counts what is out of date. */
-export function lines(edges: WiringEdge[]): Line[] {
-  return groupBy(edges, (edge) => `${edge.kind}\n${edge.from}\n${edge.to}`).map((group) => {
-    const status = worst(group);
-    const behind = group.filter((edge) => edge.status === "behind");
-    const mark = status !== "behind" ? STATUS_MARKS[status] : behind.length === 1 ? `! ${behind[0].behind || ""}`.trim() : `! ${behind.length}`;
-    return { from: group[0].from, to: group[0].to, kind: group[0].kind, edges: group, status, mark };
-  });
+/**
+ * The mark on an edge's line: its status mark, and when out of date the
+ * commits behind; one number when its facts agree, else each ("! 14, 3").
+ */
+export function mark(edge: WiringEdge): string {
+  if (edge.status !== "behind") {
+    return STATUS_MARKS[edge.status];
+  }
+  const counts = [...new Set(edge.facts.filter((fact) => fact.status === "behind" && typeof fact.behind === "number").map((fact) => fact.behind))];
+  return `! ${counts.join(", ")}`.trim();
+}
+
+/** A line per edge; its kind is the first of the edge's kinds that is shown. */
+export function lines(edges: WiringEdge[], shown: Set<EdgeKind>): Line[] {
+  return edges.map((edge) => ({ from: edge.from, to: edge.to, kind: edge.kinds.find((kind) => shown.has(kind)) ?? edge.kinds[0], edge, status: edge.status, mark: mark(edge) }));
 }
 
 // --- Details and table -------------------------------------------------------------------
@@ -498,7 +515,7 @@ function linked(text: string): string {
 }
 
 /** The status badge: a mark and the words, coloured by status. */
-function statusBadge(edge: WiringEdge): string {
+function statusBadge(edge: Pick<WiringFact, "status" | "behind">): string {
   const mark = STATUS_MARKS[edge.status];
   return `<span class="status ${edge.status}">${mark ? `${mark} ` : ""}${esc(statusText(edge))}</span>`;
 }
@@ -522,34 +539,48 @@ function nodeDetails(map: Wiring, id: string): string {
   const list = (edges: WiringEdge[], other: (edge: WiringEdge) => string): string =>
     edges.length === 0
       ? "<p class=\"muted\">None.</p>"
-      : `<ul>${edges.map((edge) => `<li>${esc(KIND_NAMES[edge.kind])}: <b>${esc(other(edge))}</b>, ${esc(edge.label)} ${statusBadge(edge)}${edge.source ? ` ${link("file", edge.source)}` : ""}</li>`).join("")}</ul>`;
+      : `<ul>${edges.map((edge) => `<li><b>${esc(other(edge))}</b>: ${esc(edge.label)} ${statusBadge(edge)}${files(edge)}</li>`).join("")}</ul>`;
   const into = map.edges.filter((edge) => edge.to === id);
   const out = map.edges.filter((edge) => edge.from === id);
   return `<h2>${link(node.label, node.url)}</h2>${facts}<h3>Takes from</h3>${list(into, (edge) => edge.from)}<h3>Feeds</h3>${list(out, (edge) => edge.to)}`;
 }
 
-/** The details of one edge. */
-function edgeDetails(edge: WiringEdge): string {
-  const rows = [
-    ["Kind", esc(KIND_NAMES[edge.kind])],
-    ["From", esc(edge.from)],
-    ["To", esc(edge.to)],
-    ["What", esc(edge.label)],
-    ["Pinned", edge.pinned ? `<code>${esc(short(edge.pinned))}</code>` : ""],
-    ["Latest", edge.latest ? `<code>${esc(short(edge.latest))}</code>` : ""],
-    ["Status", statusBadge(edge)],
-    ["Detail", edge.detail ? linked(edge.detail) : ""],
-    ["File", edge.source ? link(edge.source.replace(/^https:\/\/github\.com\//, ""), edge.source) : ""],
-  ].filter(([, value]) => value);
-  return `<h2>${esc(edge.from)} → ${esc(edge.to)}</h2><dl>${rows.map(([name, value]) => `<dt>${name}</dt><dd>${value}</dd>`).join("")}</dl>`;
+/** Links to the files that make an edge's facts, after a space, or nothing. */
+function files(edge: WiringEdge): string {
+  const sources = [...new Set(edge.facts.flatMap((fact) => (fact.source ? [fact.source] : [])))];
+  return sources.map((source, index) => ` ${link(sources.length === 1 ? "file" : `file ${index + 1}`, source)}`).join("");
 }
 
-/** The table of the edges shown. */
+/** What a watched source is watched for, or why a fact is the way it is, as table text. */
+function explained(fact: WiringFact): string {
+  return [fact.purpose ? `Watched for: ${esc(fact.purpose)}` : "", fact.detail ? linked(fact.detail) : ""].filter(Boolean).join("<br>");
+}
+
+/** The details of one edge: its summary, then each fact with its kind, pin and file. */
+function edgeDetails(edge: WiringEdge): string {
+  const fact = (one: WiringFact): string => {
+    const rows = [
+      ["Kind", esc(KIND_NAMES[one.kind])],
+      ["What", esc(one.label)],
+      ["Watched for", one.purpose ? esc(one.purpose) : ""],
+      [one.kind === "watched" ? "Reviewed" : "Pinned", one.pinned ? `<code>${esc(short(one.pinned))}</code>` : ""],
+      ["Latest", one.latest ? `<code>${esc(short(one.latest))}</code>` : ""],
+      ["Status", statusBadge(one)],
+      ["Detail", one.detail ? linked(one.detail) : ""],
+      ["File", one.source ? link(one.source.replace(/^https:\/\/github\.com\//, ""), one.source) : ""],
+    ].filter(([, value]) => value);
+    return `<dl>${rows.map(([name, value]) => `<dt>${name}</dt><dd>${value}</dd>`).join("")}</dl>`;
+  };
+  return `<h2>${esc(edge.from)} → ${esc(edge.to)}</h2><p>${esc(edge.label)} ${statusBadge(edge)}</p>${edge.facts.map(fact).join("")}`;
+}
+
+/** The table of the edges shown: a row per fact, so merged edges keep each kind's pin and file. */
 function table(edges: WiringEdge[]): string {
   const body = edges
+    .flatMap((edge) => edge.facts.map((fact) => ({ edge, fact })))
     .map(
-      (edge) =>
-        `<tr><td>${esc(KIND_NAMES[edge.kind])}</td><td>${esc(edge.from)}</td><td>${esc(edge.to)}</td><td>${esc(edge.label)}</td><td><code>${esc(short(edge.pinned))}</code></td><td><code>${esc(short(edge.latest))}</code></td><td>${statusBadge(edge)}${edge.detail ? `<br><small>${linked(edge.detail)}</small>` : ""}</td><td>${edge.source ? link("file", edge.source) : ""}</td></tr>`,
+      ({ edge, fact }) =>
+        `<tr><td>${esc(KIND_NAMES[fact.kind])}</td><td>${esc(edge.from)}</td><td>${esc(edge.to)}</td><td>${esc(fact.label)}</td><td><code>${esc(short(fact.pinned))}</code></td><td><code>${esc(short(fact.latest))}</code></td><td>${statusBadge(fact)}${fact.purpose || fact.detail ? `<br><small>${explained(fact)}</small>` : ""}</td><td>${fact.source ? link("file", fact.source) : ""}</td></tr>`,
     )
     .join("");
   return `<table><thead><tr><th>Kind</th><th>From</th><th>To</th><th>What</th><th>Pinned</th><th>Latest</th><th>Status</th><th>Source</th></tr></thead><tbody>${body}</tbody></table>`;
@@ -762,13 +793,16 @@ function elements(map: Wiring, edges: WiringEdge[], filter: Filter, at: Map<stri
   });
 
   // A self-loop (AnkiQuest-Agents' own AGENTS.md) is in the table only.
-  const edgeElements = lines(edges.filter((edge) => edge.from !== edge.to)).map((line, index) => {
+  const edgeElements = lines(
+    edges.filter((edge) => edge.from !== edge.to),
+    filter.kinds,
+  ).map((line, index) => {
     const [from, to] = [at.get(line.from)!, at.get(line.to)!];
     const bend = bow(from, to, at.values());
     return {
       group: "edges",
       classes: [direction(from, to), bend ? "bow" : ""].join(" ").trim(),
-      data: { id: `e${index}`, source: line.from, target: line.to, kind: line.kind, status: line.status, mark: line.mark, bow: bend, indices: line.edges.map((edge) => map.edges.indexOf(edge)).join(",") },
+      data: { id: `e${index}`, source: line.from, target: line.to, kind: line.kind, status: line.status, mark: line.mark, bow: bend, index: map.edges.indexOf(line.edge) },
     };
   });
   return [...laneElements, ...nodeElements, ...edgeElements];
@@ -785,15 +819,15 @@ async function main(): Promise<void> {
   // Summary and notes.
   const behind = map.edges.filter((edge) => edge.status === "behind").length;
   const unknown = map.edges.filter((edge) => edge.status === "unknown").length;
-  $("#summary").innerHTML = `${map.nodes.length} nodes, ${map.edges.length} edges: <span class="status behind">! ${behind} out of date</span>, <span class="status unknown">${unknown} unknown</span>. Generated ${esc(map.generated.slice(0, 16).replace("T", " "))} UTC.`;
+  $("#summary").innerHTML = `${map.nodes.length} nodes, ${map.edges.length} edges (${map.edges.reduce((sum, edge) => sum + edge.facts.length, 0)} facts): <span class="status behind">! ${behind} out of date</span>, <span class="status unknown">${unknown} unknown</span>. Generated ${esc(map.generated.slice(0, 16).replace("T", " "))} UTC.`;
   $("#notes").innerHTML = map.notes.map((note) => `<li>${linked(note)}</li>`).join("");
 
   // One checkbox per edge kind present, with its line and count; the fan-out kinds start off.
-  const present = kinds.filter((kind) => map.edges.some((edge) => edge.kind === kind));
+  const present = kinds.filter((kind) => map.edges.some((edge) => edge.kinds.includes(kind)));
   $("#kinds").innerHTML = present
     .map(
       (kind) =>
-        `<label><input type="checkbox" value="${kind}"${DEFAULT_KINDS.has(kind) ? " checked" : ""}> ${swatch(kind)} ${esc(KIND_NAMES[kind])} <span class="muted">${map.edges.filter((edge) => edge.kind === kind).length}</span></label>`,
+        `<label><input type="checkbox" value="${kind}"${DEFAULT_KINDS.has(kind) ? " checked" : ""}> ${swatch(kind)} ${esc(KIND_NAMES[kind])} <span class="muted">${map.edges.filter((edge) => edge.kinds.includes(kind)).length}</span></label>`,
     )
     .join("");
 
@@ -868,8 +902,7 @@ async function main(): Promise<void> {
   cy.on("tap", "edge", (event) => {
     chosen = event.target;
     focus(chosen);
-    const indices = String(event.target.data("indices")).split(",").map(Number);
-    details.innerHTML = indices.map((index) => edgeDetails(map.edges[index])).join("");
+    details.innerHTML = edgeDetails(map.edges[Number(event.target.data("index"))]);
   });
   cy.on("tap", (event) => {
     if (event.target === cy) {

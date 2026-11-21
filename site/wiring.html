@@ -36,7 +36,8 @@
 <h2>Legend</h2>
 <ul>
 <li>Each edge kind has its own colour and line style, shown next to its checkbox above.</li>
-<li><span class="status behind">! out of date</span>: thick line marked “!” with the commits behind (or the number of edges, when a line holds several); a node with an out-of-date line into it gets a thick border and a “!” before its name; in a badge, “!” after the item.</li>
+<li>One line per pair of nodes: it holds every kind of link between them (a Cargo pin and a watched source at the same commit are one line), shows when any of its kinds is ticked and takes the colour of the first one ticked. Its details and the table list each kind with its own pin and file.</li>
+<li><span class="status behind">! out of date</span>: thick line marked “!” with the commits behind, one number when its kinds agree, else each (“! 14, 3”); a node with an out-of-date line into it gets a thick border and a “!” before its name; in a badge, “!” after the item.</li>
 <li><span class="status unknown">? unknown</span>: not readable. <span class="status planned">~ planned</span>: decided, not made yet (faint line, dashed node).</li>
 <li><span class="swatch box"></span> AnkiQuest repository; <span class="swatch box fork"></span> fork (double border); <span class="swatch oval"></span> upstream or other source; <span class="swatch hex"></span> package; faded: no line shown for the current filters.</li>
 <li>Badges below a repository's name list the hidden kinds: “Dev: flake !, 4 workflows” is a flake input and four reusable workflows from AnkiQuest-Dev, the flake input out of date; “AGENTS.md → 13 (12 !)” is a file sent to 13 repositories, 12 of them out of date.</li>

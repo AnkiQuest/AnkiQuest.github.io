@@ -38,13 +38,23 @@ import {
 } from "./art.ts";
 
 /** The files under site/ copied next to index.html. */
-const ASSETS = ["style.css", "wiring.html", "wiring.css"];
+const ASSETS = ["style.css", "wiring.css"];
+
+/** The wiring page, with the Mermaid source written into it. */
+const WIRING_PAGE = "wiring.html";
+
+/** Where the Mermaid source goes in the wiring page. */
+const MERMAID_SLOT = "<!-- wiring.mmd -->";
 
 /** The wiring page's script, in TypeScript under site/, stripped to JavaScript on the site. */
 const WIRING_SCRIPT = "wiring.ts";
 
-/** The wiring map's data, at the repository root, written by src/wiring.ts. */
-const WIRING_DATA = "wiring.json";
+/**
+ * The wiring map at the repository root, served as plain files at the site
+ * root so agents can fetch them: the data (written by src/wiring.ts), its
+ * Mermaid source and the source rendered light and dark (src/wiring-mermaid.ts).
+ */
+const WIRING_FILES = ["wiring.json", "wiring.mmd", "wiring.svg", "wiring-dark.svg"];
 
 /** Width of the grid previews, in pixels; masters are wider. */
 const PREVIEW_WIDTH = 480;
@@ -455,6 +465,14 @@ ${list.map((c) => section(c, shown)).join("\n")}
 `;
 }
 
+/** The wiring page with the Mermaid source in its code block. */
+export function wiringPage(html: string, source: string): string {
+  if (!html.includes(MERMAID_SLOT)) {
+    throw new Error(`${WIRING_PAGE} has no ${MERMAID_SLOT}`);
+  }
+  return html.replace(MERMAID_SLOT, () => esc(source.trimEnd()));
+}
+
 /** Builds the site into `out`, replacing what was there. */
 export function build(server: string, out: string): void {
   const list = companions(server);
@@ -472,7 +490,10 @@ export function build(server: string, out: string): void {
   // The wiring page: its script without types, and the committed map.
   const script = readFileSync(join(site, WIRING_SCRIPT), "utf8");
   writeFileSync(join(out, WIRING_SCRIPT.replace(/\.ts$/, ".js")), stripTypeScriptTypes(script));
-  copyFileSync(join(site, "..", WIRING_DATA), join(out, WIRING_DATA));
+  for (const file of WIRING_FILES) {
+    copyFileSync(join(site, "..", file), join(out, file));
+  }
+  writeFileSync(join(out, WIRING_PAGE), wiringPage(readFileSync(join(site, WIRING_PAGE), "utf8"), readFileSync(join(site, "..", "wiring.mmd"), "utf8")));
 
   // Pictures per companion and group, so a run shows what it filed where.
   for (const companion of list) {

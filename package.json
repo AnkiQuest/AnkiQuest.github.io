@@ -6,6 +6,11 @@
   "engines": { "node": ">=22.18" },
   "scripts": {
     "build": "node src/build.ts",
-    "test": "node --test src/*.test.ts"
+    "test": "node --test src/*.test.ts",
+    "wiring:mermaid": "node src/wiring-mermaid.ts"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "12.2.0",
+    "puppeteer": "25.16.0"
   }
 }

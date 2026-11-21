@@ -943,7 +943,31 @@ async function main(): Promise<void> {
   render();
 }
 
+/** How long the copy button says it copied, in milliseconds. */
+const COPIED_FOR = 1500;
+
+/** The copy button of the Mermaid source; works without wiring.json. */
+function copyButton(): void {
+  const button = document.querySelector<HTMLButtonElement>("#copy");
+  const code = document.querySelector("#mermaid-source");
+  if (!button || !code) {
+    return;
+  }
+  button.addEventListener("click", () => {
+    navigator.clipboard.writeText(code.textContent ?? "").then(
+      () => {
+        button.textContent = "Copied";
+        setTimeout(() => (button.textContent = "Copy"), COPIED_FOR);
+      },
+      () => {
+        button.textContent = "Copy failed";
+      },
+    );
+  });
+}
+
 if (typeof document !== "undefined") {
+  copyButton();
   main().catch((error: unknown) => {
     document.querySelector("#summary")!.textContent = `Could not load wiring.json: ${String(error)}`;
   });

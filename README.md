@@ -1,16 +1,21 @@
 # AnkiQuest companions
 
-The gallery at <https://ankiquest.github.io>: every picture of every companion, built from the masters in [AnkiQuest-Server](https://github.com/AnkiQuest/AnkiQuest-Server) `static/`. Each companion's pictures are grouped into poses, moments, icons, pack art and older versions; `RULES` in `src/art.ts` files every picture that is not a pose master, and the build fails on a picture it does not file.
+The gallery at <https://ankiquest.github.io>: the art matrix of every companion by every item of AnkiQuest-Server's pose list (`tests/fixtures/companion_poses.json`), each cell drawn, showing its fallback, or missing; a page per companion with what it is missing, why and the issue tracking it; and the archive, apart from current art. Every picture card shows who made it, its author and its licence, from [AnkiQuest-Art](https://github.com/AnkiQuest/AnkiQuest-Art)'s `manifest.json`:
 
-The masters come from the AnkiQuest-Server commit the `server` submodule
-pins; Dependabot opens a pull request when AnkiQuest-Server moves.
+- Shigeyuki's original art: files of his Anki-tan asset pack, unchanged. Each companion page lists them apart from the art we made; the archive page has his pack as he made it, naming the files the apps use;
+- art we made: derivatives of Shigeyuki's Anki-tan (CC BY-SA 4.0) and AnkiQuest's own companions (AGPL-3.0-or-later), in use (the masters, on the matrix and companion pages) or retired (Art's archive, on the archive page).
+
+Anki-tan chibi has her own column and page as a future companion.
+
+What each companion shows comes from AnkiQuest-Server's `xtask art-coverage --json` (schema 1, `docs/branding/art-coverage.md` there), run in the AnkiQuest-Server commit the `server` submodule pins. The pictures, credits and archive come from the AnkiQuest-Art commit the `art` submodule pins: `src/manifest.ts` finds each picture the matrix shows in Art (the master for that companion and item, or else the Art picture with the same bytes) and copies it to `files/<Art path>` with its WebP previews. A picture in Art that the manifest does not list, a licence the gallery does not know, a picture the matrix shows that Art does not have, or a licence in Art that differs from the companion's in the matrix fails the build. Dependabot opens a pull request when either submodule moves.
 
 ```sh
 git submodule update --init
-node src/build.ts server _site
+node src/build.ts server art _site                 # runs cargo in server/
+node src/build.ts server art _site coverage.json   # or reads the JSON from a file
 ```
 
-Run it in the dev shell (`nix develop`), which has Node 22, `cwebp` and `webpmux`. The `pages` workflow builds and deploys on every push to `master`.
+Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`; the first form also needs `cargo`. `npm test` checks how the JSON and Art's manifest become pages. The `pages` workflow builds and deploys on every push to `master`.
 
 ## Wiring map
 
@@ -30,4 +35,4 @@ The page lays the map out by hand: `LAYOUT` in `site/wiring.ts` places every nod
 
 ## Licence
 
-AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep the licence of their masters in AnkiQuest-Server; the gallery shows the credit and licence from each folder's `LICENSE` or `README.md` there.
+AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep their licence in AnkiQuest-Art; the gallery shows each picture's author and licence from its manifest, and the licence and credit art-coverage gives for each companion.

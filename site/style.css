@@ -6,6 +6,7 @@
   --line: #e4e0d8;
   --accent: #b45309;
   --tile: #f3f1ec;
+  --missing: #b91c1c;
   color-scheme: light dark;
 }
 
@@ -18,6 +19,7 @@
     --line: #34322e;
     --accent: #f59e0b;
     --tile: #2a2926;
+    --missing: #f87171;
   }
 }
 
@@ -36,10 +38,38 @@ a {
   color: var(--accent);
 }
 
+header,
 main {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 16px 48px;
+  padding: 0 16px;
+}
+
+main {
+  padding-bottom: 48px;
+}
+
+/* The site name and the links to every page, on every page. */
+header {
+  padding-top: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.site {
+  margin: 0;
+  font-weight: 600;
+}
+
+.site a {
+  color: inherit;
+  text-decoration: none;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 4px 0 12px;
 }
 
 h1 {
@@ -51,34 +81,161 @@ h1 a {
   text-decoration: none;
 }
 
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-}
-
-section {
-  margin-top: 40px;
-}
-
 h2 {
-  margin: 0;
+  margin: 32px 0 0;
+  font-size: 1.2rem;
 }
 
-.credit {
-  margin: 4px 0 0;
+h3 {
+  margin: 20px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+main > p,
+section > p {
   max-width: 70ch;
-  color: var(--muted);
-  font-size: 0.8rem;
+}
+
+code {
   overflow-wrap: anywhere;
 }
 
+/* One line per group of pictures that share a licence. */
+.licence {
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+/* Drawn, fallback and missing look the same in the legend, the matrix and the cards. */
+.legend span {
+  display: inline-block;
+  margin: 0 8px 4px 0;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.legend .present {
+  border: 1px solid var(--line);
+}
+
+.legend .fallback {
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+}
+
+.legend .missing {
+  border: 1px dashed var(--missing);
+  color: var(--missing);
+}
+
+/* The matrix scrolls sideways in its own box; item names stay in view. */
+.matrix-wrap {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.matrix {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.matrix th,
+.matrix td {
+  padding: 4px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.matrix thead th {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.matrix th small {
+  display: block;
+  color: var(--muted);
+  font-weight: normal;
+  font-size: 0.75rem;
+}
+
+.matrix th[scope="row"],
+.matrix thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg);
+  text-align: left;
+  min-width: 96px;
+  max-width: 128px;
+}
+
+.matrix .kind th {
+  padding-top: 16px;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.matrix .kind th small {
+  display: inline;
+  margin-left: 8px;
+}
+
+.matrix td {
+  width: 88px;
+  min-width: 88px;
+  text-align: center;
+}
+
+.matrix td img {
+  display: block;
+  margin: 0 auto;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: var(--tile);
+  border-radius: 8px;
+}
+
+.matrix td span {
+  display: block;
+  line-height: 1.2;
+}
+
+.matrix td.fallback img,
+.grid .fallback img {
+  opacity: 0.45;
+  outline: 1px dashed var(--muted);
+  outline-offset: -1px;
+}
+
+.matrix td.fallback span {
+  color: var(--muted);
+}
+
+.matrix td.missing span {
+  margin: 0 auto;
+  width: 72px;
+  height: 72px;
+  line-height: 72px;
+  border: 1px dashed var(--missing);
+  border-radius: 8px;
+  color: var(--missing);
+}
+
+/* Cards: the same layout on companion pages and in the archive. */
 .grid {
   list-style: none;
   margin: 16px 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
 }
 
@@ -89,7 +246,8 @@ h2 {
   overflow: hidden;
 }
 
-.grid img {
+.grid img,
+.grid .blank {
   display: block;
   width: 100%;
   height: auto;
@@ -98,62 +256,86 @@ h2 {
   background: var(--tile);
 }
 
-.grid span {
-  display: block;
-  padding: 6px 10px 8px;
-  font-size: 0.9rem;
-  overflow-wrap: anywhere;
+.grid .blank {
+  display: grid;
+  place-items: center;
+  color: var(--missing);
+  border-bottom: 1px dashed var(--missing);
 }
 
-h3 {
-  margin: 28px 0 0;
-  font-size: 1.15rem;
+.grid li.missing {
+  border: 1px dashed var(--missing);
 }
 
-h4 {
-  margin: 20px 0 0;
-  font-size: 1rem;
-  color: var(--muted);
-}
-
-/* Captions of pictures that are not poses: file name, note, licence. */
 .grid .caption {
   padding: 6px 10px 8px;
   font-size: 0.85rem;
   overflow-wrap: anywhere;
 }
 
-.grid .caption code {
+.grid .caption b {
   display: block;
-  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .grid .caption small {
   display: block;
-  margin-top: 2px;
   color: var(--muted);
 }
 
-.grid .caption details {
-  margin-top: 4px;
-}
-
-.frames {
-  margin: 4px 0 0;
-  padding-left: 1.6em;
-  font-size: 0.75rem;
-}
-
-/* Frame links are list items inside a card, not cards. */
-.grid .frames li {
-  background: none;
-  border: 0;
-  border-radius: 0;
-  overflow: visible;
+.missing-list {
+  margin: 8px 0 0;
+  padding-left: 1.4em;
+  max-width: 70ch;
 }
 
 @media (min-width: 700px) {
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
+}
+
+/* Shigeyuki's originals: a dot in the matrix and the legend; every card has a credit line. */
+.legend .shigeyuki::before,
+.matrix td[data-origin="shigeyuki"] a::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.legend .shigeyuki::before {
+  margin-right: 6px;
+}
+
+.matrix td[data-origin] a {
+  position: relative;
+  display: block;
+}
+
+.matrix td[data-origin="shigeyuki"] a::after {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+}
+
+.grid .caption .credit {
+  margin-top: 4px;
+  font-size: 0.75rem;
+}
+
+.origin-list {
+  margin: 8px 0 0;
+  padding-left: 1.4em;
+  max-width: 70ch;
+}
+
+details {
+  margin-top: 16px;
+}
+
+summary {
+  cursor: pointer;
 }

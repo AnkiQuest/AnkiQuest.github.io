@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>AnkiQuest wiring</title>
+<meta name="description" content="How the AnkiQuest repositories, upstreams and packages feed each other, and which pins are out of date.">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="wiring.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js" integrity="sha512-EY3U1MWdgKx0P1dqTE4inlKz2cpXtWpsR1YUyD855Hs6RL/A0cyvrKh60EpE8wDZ814cTe1KgRK+sG0Rn792vQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="module" src="wiring.js"></script>
+</head>
+<body>
+<main class="wiring">
+<h1><a href="index.html">AnkiQuest</a> wiring</h1>
+<p>How every AnkiQuest repository, upstream and package feeds the others: submodules, Maven and Cargo dependencies, Nix flake inputs, reusable workflows, pinned AnkiQuest-Server data, <code>AGENTS.md</code> from AnkiQuest-Agents, upstream merges and watched sources. Arrows point the way code or data flows. Regenerated daily from the repositories' default branches.</p>
+<p id="summary">Loading wiring.json…</p>
+
+<div id="controls">
+<label class="search">Search <input id="search" type="search" placeholder="repository or package"></label>
+<label><input id="outdated" type="checkbox"> Only out of date</label>
+<fieldset>
+<legend>Edge kinds <button id="all" type="button">all</button> <button id="none" type="button">none</button></legend>
+<div id="kinds"></div>
+</fieldset>
+</div>
+
+<div class="split">
+<div id="graph" role="img" aria-label="Graph of the edges in the table below"></div>
+<aside id="details"><p class="muted">Select a node or an edge to see its details and links.</p></aside>
+</div>
+
+<section class="legend" aria-label="Legend">
+<h2>Legend</h2>
+<ul>
+<li><span class="swatch line current"></span> up to date</li>
+<li><span class="swatch line behind"></span> <span class="status behind">! out of date</span> (thick, marked “!” with the commits behind)</li>
+<li><span class="swatch line unknown"></span> unknown: not readable (dashed)</li>
+<li><span class="swatch line planned"></span> <span class="status planned">~ planned</span> (dotted)</li>
+<li><span class="swatch line none"></span> no version to compare</li>
+<li><span class="swatch box"></span> AnkiQuest repository; <span class="swatch box fork"></span> fork (thick border); <span class="swatch oval"></span> upstream or other source; <span class="swatch hex"></span> package; dashed border: planned repository</li>
+</ul>
+</section>
+
+<section>
+<h2>Edges <small id="count" class="muted"></small></h2>
+<div class="scroll" id="table"></div>
+</section>
+
+<section>
+<h2>Notes</h2>
+<p class="muted">What the generator could not read, and inconsistencies it found.</p>
+<ul id="notes"></ul>
+</section>
+</main>
+</body>
+</html>

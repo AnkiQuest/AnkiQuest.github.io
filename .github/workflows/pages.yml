@@ -1,7 +1,8 @@
-# Builds the gallery from the pictures of the AnkiQuest-Art commit the `art`
-# submodule pins and the fixtures of the AnkiQuest-Server commit the `server`
-# submodule pins, and deploys it to GitHub Pages. Pull requests only test and
-# build. Dependabot opens the submodule bumps.
+# Builds the gallery from the art matrix (`xtask art-coverage --json`) of
+# the AnkiQuest-Server commit the `server` submodule pins and the pictures
+# and manifest of the AnkiQuest-Art commit the `art` submodule pins, and
+# deploys it to GitHub Pages. Pull requests only test and build.
+# Dependabot opens the submodule bumps.
 name: pages
 
 on:
@@ -33,7 +34,21 @@ jobs:
             experimental-features = nix-command flakes
       - run: nix flake check
       - run: nix develop -c npm test
-      - run: nix develop -c node src/build.ts server art _site
+
+      # The art matrix, from the pinned Server's xtask. A Server without
+      # art-coverage --json (before AnkiQuest-Server#118) fails the build.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: server
+      - name: Read the art matrix
+        working-directory: server
+        run: |
+          if ! cargo run -q -p ankiquest-xtask -- art-coverage --json > "$RUNNER_TEMP/coverage.json"; then
+            echo "::error::The pinned AnkiQuest-Server has no 'xtask art-coverage --json' (AnkiQuest-Server#118). Bump the server submodule to a commit that has it."
+            exit 1
+          fi
+
+      - run: nix develop -c node src/build.ts server art _site "$RUNNER_TEMP/coverage.json"
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

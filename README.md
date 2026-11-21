@@ -20,7 +20,7 @@ Run it in the dev shell (`nix develop`), which has Node 22, `cwebp` and `webpmux
 node src/wiring.ts wiring.json
 ```
 
-The `wiring` workflow runs it daily and opens a pull request when the map changes. Private repositories show as unknown unless the `WIRING_TOKEN` secret can read them.
+The `wiring` workflow runs it daily and opens a pull request when the map changes. Private repositories are never read: the page shows them only as nodes with their links to AnkiQuest repositories.
 
 ## Licence
 

@@ -47,9 +47,45 @@ const ANDROID = `${ORG}/AnkiQuest-Android`;
 const DESKTOP = `${ORG}/AnkiQuest-Desktop`;
 
 /** Repositories outside the organisation that are part of AnkiQuest's wiring. */
-const EXTRA_REPOS: RepoRow[] = [
-  { repo: "float3/nixos", purpose: "hill's NixOS configuration: deploys AnkiQuest-Server; AnkiQuest-Hosting is its submodule." },
+const EXTRA_REPOS: RepoRow[] = [{ repo: "float3/nixos", purpose: "" }];
+
+/**
+ * Private repositories (hill, 2026-11-21): the public map shows them only as
+ * nodes with their links to AnkiQuest repositories, without commits, pins,
+ * counts, paths or other details. The generator never reads them, so the
+ * daily run needs no token for them; their links are declared here. A
+ * repository the GitHub API reports as private is redacted the same way.
+ */
+const PRIVATE_REPOS = ["float3/nixos", `${ORG}/AnkiQuest-Hosting`];
+
+/** The links of the private repositories to AnkiQuest repositories. */
+const PRIVATE_LINKS: { kind: EdgeKind; from: string; to: string; label: string }[] = [
+  { kind: "submodule", from: `${ORG}/AnkiQuest-Hosting`, to: "float3/nixos", label: "submodule" },
+  { kind: "flake", from: SERVER, to: "float3/nixos", label: "flake input" },
+  { kind: "flake", from: `${ORG}/AnkiQuest-Dev`, to: "float3/nixos", label: "flake input" },
+  { kind: "workflow", from: `${ORG}/AnkiQuest-Dev`, to: `${ORG}/AnkiQuest-Hosting`, label: "reusable workflow" },
 ];
+
+/** What the page says about a private repository. */
+const PRIVATE_NOTE = "Private repository: only its links to AnkiQuest repositories are shown.";
+
+/**
+ * Strips a map to what may be public about `hidden` repositories: each
+ * becomes a bare node, and of its edges only those to AnkiQuest repositories
+ * (or another hidden one) stay, with kind, ends and label and nothing else.
+ */
+export function redact(map: Wiring, hidden: Set<string>): Wiring {
+  const touches = (edge: WiringEdge): boolean => hidden.has(edge.from) || hidden.has(edge.to);
+  const allowed = (id: string): boolean => hidden.has(id) || id.startsWith(`${ORG}/`);
+  const edges = map.edges
+    .filter((edge) => !touches(edge) || (allowed(edge.from) && allowed(edge.to)))
+    .map((edge): WiringEdge => (touches(edge) ? { kind: edge.kind, from: edge.from, to: edge.to, label: edge.kind === "agents" ? "AGENTS.md" : edge.label, status: "none" } : edge));
+  const nodes = map.nodes.map((node): WiringNode =>
+    hidden.has(node.id) ? { id: node.id, kind: node.kind, label: node.label, url: node.url, private: true, readable: false, note: PRIVATE_NOTE } : node,
+  );
+  const notes = map.notes.filter((note) => ![...hidden].some((id) => note.includes(id)));
+  return { ...map, nodes, edges, notes };
+}
 
 /**
  * Repositories that are decided but may not exist yet, and the repositories
@@ -129,6 +165,7 @@ class Collector {
   private readonly notes: string[] = [];
   private readonly ours: RepoRow[] = [];
   private readonly readable = new Set<string>();
+  private readonly hidden = new Set<string>(PRIVATE_REPOS);
 
   constructor(cache: string) {
     this.clones = new Clones(cache);
@@ -154,14 +191,18 @@ class Collector {
     await this.stepAsync("AGENTS.md", () => this.agents());
     this.step("runtime links", () => this.runtime());
     this.planned();
+    for (const link of PRIVATE_LINKS) {
+      this.edge({ ...link, status: "none" });
+    }
 
     const used = new Set(this.edges.flatMap((edge) => [edge.from, edge.to]));
-    return {
+    const map = {
       generated: new Date().toISOString(),
       nodes: [...this.nodes.values()].filter((node) => node.kind === "repo" || node.kind === "fork" || used.has(node.id)),
       edges: this.edges,
       notes: this.notes,
     };
+    return redact(map, this.hidden);
   }
 
   /** Runs one step; a failure becomes a note instead of stopping the run. */
@@ -221,8 +262,16 @@ class Collector {
     for (const row of this.ours) {
       const node = this.node(row.repo, row.upstream ? "fork" : "repo", row.repo.split("/")[1]);
       node.purpose = row.purpose;
+      // Private repositories are never read: they stay bare nodes.
+      if (this.hidden.has(row.repo)) {
+        continue;
+      }
       const info = await repoInfo(row.repo);
       node.private = info?.private;
+      if (info?.private) {
+        this.hidden.add(row.repo);
+        continue;
+      }
       if (info === undefined) {
         this.notes.push(`${row.repo}: the GitHub API did not answer (private, or rate limited); its visibility and open pull requests are unknown.`);
       }

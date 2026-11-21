@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { pinStatus, short } from "./wiring.ts";
+import { pinStatus, redact, short } from "./wiring.ts";
 import type { Wiring } from "./wiring-model.ts";
 import {
   agentsFile,
@@ -196,6 +196,48 @@ test("pinStatus and short", () => {
   assert.equal(pinStatus(undefined, "b", undefined), "unknown");
   assert.equal(short("0123456789".repeat(4)), "0123456789");
   assert.equal(short("0.1.77"), "0.1.77");
+});
+
+test("redact keeps only bare links between private and AnkiQuest repositories", () => {
+  const map: Wiring = {
+    generated: "2026-11-21T00:00:00Z",
+    notes: ["cannot clone float3/nixos: denied", "other note"],
+    nodes: [
+      { id: "float3/nixos", kind: "repo", label: "nixos", readable: true, head: "a".repeat(40), purpose: "details", private: true },
+      { id: "AnkiQuest/AnkiQuest-Server", kind: "repo", label: "AnkiQuest-Server", readable: true, head: "b".repeat(40) },
+      { id: "nixos/nixpkgs", kind: "external", label: "nixos/nixpkgs", readable: true },
+    ],
+    edges: [
+      { kind: "flake", from: "AnkiQuest/AnkiQuest-Server", to: "float3/nixos", label: "ankiquest", pinned: "c".repeat(40), latest: "b".repeat(40), behind: 12, status: "behind", detail: "x", source: "https://github.com/float3/nixos/blob/HEAD/flake.lock" },
+      { kind: "flake", from: "nixos/nixpkgs", to: "float3/nixos", label: "nixpkgs", pinned: "d".repeat(40), status: "current" },
+      { kind: "data", from: "AnkiQuest/AnkiQuest-Server", to: "AnkiQuest/AnkiQuest-Android", label: "fixtures", pinned: "e".repeat(40), behind: 3, status: "behind" },
+    ],
+  };
+  const out = redact(map, new Set(["float3/nixos"]));
+  assert.deepEqual(out.edges[0], { kind: "flake", from: "AnkiQuest/AnkiQuest-Server", to: "float3/nixos", label: "ankiquest", status: "none" });
+  assert.equal(out.edges.length, 2, "the edge to a non-AnkiQuest repository is dropped");
+  assert.deepEqual(out.edges[1], map.edges[2], "public edges are unchanged");
+  const nixos = out.nodes[0];
+  assert.equal(nixos.head, undefined);
+  assert.equal(nixos.purpose, undefined);
+  assert.equal(nixos.private, true);
+  assert.deepEqual(out.nodes[1], map.nodes[1]);
+  assert.deepEqual(out.notes, ["other note"]);
+  assert.ok(!JSON.stringify(out).includes("c".repeat(40)));
+});
+
+test("the committed wiring.json has no details of private repositories", () => {
+  const map = JSON.parse(readFileSync(new URL("../wiring.json", import.meta.url), "utf8")) as Wiring;
+  const hidden = new Set(map.nodes.filter((node) => node.private).map((node) => node.id));
+  assert.ok(hidden.has("float3/nixos") && hidden.has("AnkiQuest/AnkiQuest-Hosting"));
+  for (const node of map.nodes.filter((candidate) => hidden.has(candidate.id))) {
+    assert.equal(node.head, undefined);
+    assert.equal(node.purpose, undefined);
+  }
+  for (const edge of map.edges.filter((candidate) => hidden.has(candidate.from) || hidden.has(candidate.to))) {
+    assert.deepEqual(Object.keys(edge).sort(), ["from", "kind", "label", "status", "to"]);
+  }
+  assert.ok(!map.notes.some((note) => [...hidden].some((id) => note.includes(id))));
 });
 
 /** A small map for the page's helpers. */

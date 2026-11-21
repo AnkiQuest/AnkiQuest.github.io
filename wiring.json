@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-21T18:17:59.247Z",
+  "generated": "2026-11-21T18:24:59.768Z",
   "nodes": [
     {
       "id": "AnkiQuest/AnkiQuest-Server",
@@ -95,11 +95,10 @@
       "id": "AnkiQuest/AnkiQuest-Hosting",
       "kind": "repo",
       "label": "AnkiQuest-Hosting",
-      "readable": true,
       "url": "https://github.com/AnkiQuest/AnkiQuest-Hosting",
-      "purpose": "The NixOS configuration of the host that serves ankiquest.org (private); a submodule of float3/nixos.",
       "private": true,
-      "head": "9e66c577e364b8ea194116886ede6df1ba095703"
+      "readable": false,
+      "note": "Private repository: only its links to AnkiQuest repositories are shown."
     },
     {
       "id": "AnkiQuest/AnkiQuest-Sync",
@@ -135,11 +134,10 @@
       "id": "float3/nixos",
       "kind": "repo",
       "label": "nixos",
-      "readable": true,
       "url": "https://github.com/float3/nixos",
-      "purpose": "hill's NixOS configuration: deploys AnkiQuest-Server; AnkiQuest-Hosting is its submodule.",
       "private": true,
-      "head": "5797d5fa462afd5da5c42c56a5f005c09ad13af4"
+      "readable": false,
+      "note": "Private repository: only its links to AnkiQuest repositories are shown."
     },
     {
       "id": "AnkiQuest/AnkiQuest-Art",
@@ -772,16 +770,6 @@
       "source": "https://github.com/AnkiQuest/AnkiQuest-Dev/blob/HEAD/.github/workflows/banner.yml#L89"
     },
     {
-      "kind": "workflow",
-      "from": "AnkiQuest/AnkiQuest-Dev",
-      "to": "AnkiQuest/AnkiQuest-Hosting",
-      "label": "workflows/nix-check.yml@master",
-      "pinned": "master",
-      "status": "current",
-      "detail": "follows master",
-      "source": "https://github.com/AnkiQuest/AnkiQuest-Hosting/blob/HEAD/.github/workflows/ci.yml#L22"
-    },
-    {
       "kind": "flake",
       "from": "AnkiQuest/AnkiQuest-Dev",
       "to": "AnkiQuest/AnkiQuest-Sync",
@@ -852,39 +840,6 @@
       "behind": 33,
       "status": "behind",
       "source": "https://github.com/AnkiQuest/AnkiQuest.github.io/blob/HEAD/flake.lock"
-    },
-    {
-      "kind": "submodule",
-      "from": "AnkiQuest/AnkiQuest-Hosting",
-      "to": "float3/nixos",
-      "label": "nixos/hosts/aws",
-      "pinned": "3577c6198dcfb8b8623847e6277321225f7cf29b",
-      "latest": "9e66c577e364b8ea194116886ede6df1ba095703",
-      "behind": 7,
-      "status": "behind",
-      "source": "https://github.com/float3/nixos/blob/HEAD/.gitmodules"
-    },
-    {
-      "kind": "flake",
-      "from": "AnkiQuest/AnkiQuest-Server",
-      "to": "float3/nixos",
-      "label": "ankiquest",
-      "pinned": "200357299f26eb3cdc9adb253b1f48510d27daea",
-      "latest": "7a34c6f09a493bd9758e2af6710da1ab1a1fd285",
-      "behind": 12,
-      "status": "behind",
-      "source": "https://github.com/float3/nixos/blob/HEAD/flake.lock"
-    },
-    {
-      "kind": "flake",
-      "from": "AnkiQuest/AnkiQuest-Dev",
-      "to": "float3/nixos",
-      "label": "ankiquest-dev",
-      "pinned": "020e11839f2859141685e2bf465d43097df7a1c0",
-      "latest": "1bc4175426e4ea8578e196763cbdf503900e950c",
-      "behind": 8,
-      "status": "behind",
-      "source": "https://github.com/float3/nixos/blob/HEAD/flake.lock"
     },
     {
       "kind": "upstream",
@@ -1146,10 +1101,7 @@
       "from": "AnkiQuest/AnkiQuest-Agents",
       "to": "AnkiQuest/AnkiQuest-Hosting",
       "label": "AGENTS.md",
-      "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-Hosting.md",
-      "pinned": "differs",
-      "status": "behind",
-      "detail": "differs from AnkiQuest-Agents"
+      "status": "none"
     },
     {
       "kind": "agents",
@@ -1252,6 +1204,34 @@
       "label": "art (planned)",
       "status": "planned",
       "detail": "decided, not in the repository's .gitmodules yet"
+    },
+    {
+      "kind": "submodule",
+      "from": "AnkiQuest/AnkiQuest-Hosting",
+      "to": "float3/nixos",
+      "label": "submodule",
+      "status": "none"
+    },
+    {
+      "kind": "flake",
+      "from": "AnkiQuest/AnkiQuest-Server",
+      "to": "float3/nixos",
+      "label": "flake input",
+      "status": "none"
+    },
+    {
+      "kind": "flake",
+      "from": "AnkiQuest/AnkiQuest-Dev",
+      "to": "float3/nixos",
+      "label": "flake input",
+      "status": "none"
+    },
+    {
+      "kind": "workflow",
+      "from": "AnkiQuest/AnkiQuest-Dev",
+      "to": "AnkiQuest/AnkiQuest-Hosting",
+      "label": "reusable workflow",
+      "status": "none"
     }
   ],
   "notes": [

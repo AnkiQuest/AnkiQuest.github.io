@@ -3,9 +3,10 @@
 # one pull request (branch wiring-update) when anything but the
 # timestamp changed. Merging it deploys the page through `pages`.
 #
-# Reads with GITHUB_TOKEN, which sees public repositories only: private
-# ones (AnkiQuest-Hosting, float3/nixos) show as unknown unless the
-# WIRING_TOKEN secret holds a token with Contents read on them.
+# Reads public repositories only. Private ones (AnkiQuest-Hosting,
+# float3/nixos) are never read: the generator declares their links to
+# AnkiQuest repositories and shows nothing else of them (hill, 2026-11-21).
+# GITHUB_TOKEN is sent to the GitHub API for its higher rate limit.
 # Pull requests opened with GITHUB_TOKEN start no CI; the checks run once
 # someone pushes to the branch, or on the merge.
 name: wiring
@@ -31,7 +32,6 @@ jobs:
       pull-requests: write
     env:
       GH_TOKEN: ${{ github.token }}
-      READ_TOKEN: ${{ secrets.WIRING_TOKEN || github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -41,13 +41,10 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
-      # git sends READ_TOKEN to github.com through the environment only, so it
-      # is never written to a git config file.
       - name: Generate wiring.json
-        run: |
-          header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$READ_TOKEN" | base64 -w0)"
-          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$header" \
-            WIRING_GITHUB_TOKEN="$READ_TOKEN" nix develop -c node src/wiring.ts wiring.json
+        env:
+          WIRING_GITHUB_TOKEN: ${{ github.token }}
+        run: nix develop -c node src/wiring.ts wiring.json
 
       # Only a change besides `generated` is worth a pull request.
       - name: Open or update the pull request

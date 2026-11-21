@@ -61,10 +61,6 @@ export type Look = (file: string) => Shown;
 /** Art's archive, for the archive page: Shigeyuki's pack and the retired pictures. */
 export interface ArtArchive {
   pack: PackEntry;
-  /** The pack folder's README, by Art path. */
-  packReadme: string | null;
-  /** The files of the pack folder: the pack minus the files that became masters. */
-  packFiles: string[];
   /** The pack files that became masters: pack path, Art file, and the companions and poses they show. */
   packUsed: { pack: string; file: string; uses: { companion: string; pose: string }[] }[];
   retired: RetiredEntry[];
@@ -177,7 +173,7 @@ function cellOf(companion: Companion, item: string): Cell {
 
 /** One matrix cell: the picture, the fallback it shows, or "missing"; Shigeyuki's originals are marked. */
 function matrixCell(companion: Companion, cell: Cell, look: Look): string {
-  const shown = cell.status === "missing" ? undefined : look(cell.file);
+  const shown = cell.status === "present" ? look(cell.file) : undefined;
   const origin = shown === undefined ? "" : ` data-origin="${shown.picture.origin}"`;
   const open = `<td data-companion="${esc(companion.id)}" data-item="${esc(cell.name)}" class="${cell.status}"${origin}>`;
   const alt = `${companion.name}, ${words(cell.name)}`;
@@ -186,10 +182,8 @@ function matrixCell(companion: Companion, cell: Cell, look: Look): string {
     case "present": {
       return `${open}<a href="${esc(shown!.href)}"${title}>${img(shown!.thumb, alt)}</a></td>`;
     }
-    case "fallback": {
-      const label = `shows ${words(cell.shows)}`;
-      return `${open}<a href="${esc(shown!.href)}"${title}>${img(shown!.thumb, `${alt}: ${label}`)}</a><span>${esc(label)}</span></td>`;
-    }
+    case "fallback":
+      return `${open}<span>empty</span><small>shows ${esc(words(cell.shows))}</small></td>`;
     case "missing":
       return `${open}<span>missing</span></td>`;
   }
@@ -235,7 +229,7 @@ ${shared.map((entry) => fileCard(entry.file, "", entry.shows.map((id) => coverag
 
   const body = `<h1>Art matrix</h1>
 <p>Every companion by every item of the pose list (<code>${esc(coverage.fixture)}</code>). The goal is every item drawn for every companion. Core items are needed to go live; a missing item shows its fallback until it is drawn.</p>
-<p class="legend"><span class="present">drawn</span> <span class="fallback">fallback: shows another item</span> <span class="missing">missing: shows nothing</span> <span class="shigeyuki">Shigeyuki's original</span></p>
+<p class="legend"><span class="present">drawn</span> <span class="fallback">empty: shows another item</span> <span class="missing">missing: shows nothing</span> <span class="shigeyuki">Shigeyuki's original</span></p>
 <div class="matrix-wrap">
 <table class="matrix">
 <thead><tr><th scope="col">Item</th>${heads.join("")}</tr></thead>
@@ -243,7 +237,7 @@ ${groups.join("\n")}
 </table>
 </div>
 ${planned}
-<p>Each companion's page lists what it is missing and why, and who drew each picture: Shigeyuki's original Anki-tan art, or art AnkiQuest made. Shigeyuki's pack as he made it and our retired pictures are in the <a href="archive.html">archive</a>, apart from current art.</p>
+<p>Each companion's page lists what it is missing and why, and who drew each picture: Shigeyuki's original Anki-tan art, or art AnkiQuest made. Shigeyuki's own Anki-tan page and our retired pictures are linked from the <a href="archive.html">archive</a>.</p>
 ${together}`;
   return layout(coverage, "AnkiQuest art matrix", "Every AnkiQuest companion by every pose: drawn, fallback or missing.", body);
 }
@@ -259,11 +253,8 @@ function itemCard(companion: Companion, cell: Cell, look: Look): string {
       const file = cell.file.slice(cell.file.lastIndexOf("/") + 1);
       return `${open}<a href="${esc(shown.href)}">${img(shown.card, alt)}</a><div class="caption">${name}<small>${esc(file)}</small>${credit(shown.picture)}</div></li>`;
     }
-    case "fallback": {
-      const shown = look(cell.file);
-      const label = `fallback: shows ${words(cell.shows)}`;
-      return `${open}<a href="${esc(shown.href)}">${img(shown.card, `${alt}: ${label}`)}</a><div class="caption">${name}<small>${esc(label)}</small>${credit(shown.picture)}</div></li>`;
-    }
+    case "fallback":
+      return `${open}<div class="blank">empty</div><div class="caption">${name}<small>shows ${esc(words(cell.shows))}</small></div></li>`;
     case "missing":
       return `${open}<div class="blank">missing</div><div class="caption">${name}<small>shows nothing</small></div></li>`;
   }
@@ -397,50 +388,24 @@ function poseLink(coverage: Coverage, id: string, pose: string): string {
 }
 
 /**
- * Shigeyuki's original art: his pack as he made it. The files that became
- * masters are named with what they show (their cards are on the companion
- * pages); the rest are cards, folder by folder, the animation frames folded.
+ * Shigeyuki's original art: a link to his Anki-tan page, and the pack files
+ * AnkiQuest uses, named with what they show. His pack is not shown here:
+ * his page is where to see it (hill, 2026-11-21).
  */
-function packSection(coverage: Coverage, archive: ArtArchive, look: Look, note: (file: string) => string | undefined): string {
+function packSection(coverage: Coverage, archive: ArtArchive): string {
   const { pack } = archive;
-  const base = pack.folder.replace(/\/$/, "");
   const used = archive.packUsed.map(
     (entry) => `<li><code>${esc(entry.pack)}</code>: ${entry.uses.map((use) => poseLink(coverage, use.companion, use.pose)).join(", ")}</li>`,
   );
-
-  // The rest of the pack, by folder.
-  const folders = new Map<string, string[]>();
-  for (const file of archive.packFiles) {
-    const path = file.slice(base.length + 1);
-    const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-    folders.set(dir, [...(folders.get(dir) ?? []), file]);
-  }
-  const groups = [...folders].map(([dir, files]) => {
-    const cards = `<ul class="grid">
-${files.map((file) => fileCard(file, `${base}/${dir}`.replace(/\/$/, ""), file, look)).join("\n")}
-</ul>`;
-    const title = dir === "" ? "Top folder" : dir;
-    // Animation frames: many near-identical pictures, folded away.
-    if (dir.split("/").length > 1) {
-      return `<details>
-<summary><code>${esc(title)}</code>: ${files.length} frames</summary>
-${cards}
-</details>`;
-    }
-    return `<h3><code>${esc(title)}</code></h3>
-${cards}`;
-  });
-
   return `<section id="shigeyuki">
 <h2>Shigeyuki's original art</h2>
 ${licenceLine(licenceFor(coverage, pack.licence), "Every picture in his pack")}
-${archive.packReadme === null ? `<p>${esc(pack.author)}'s Anki-tan asset pack (<a href="${esc(pack.source)}">${esc(pack.source)}</a>).</p>` : readmeLine(archive.packReadme, note)}
-<h3>Pack files the apps use</h3>
+<p>${esc(pack.author)}'s Anki-tan and his asset pack: <a href="${esc(pack.source)}">${esc(pack.source)}</a>.</p>
+<h3>Pack files AnkiQuest uses</h3>
 <p>Kept as masters, unchanged; their cards are on the companion pages.</p>
 <ul class="missing-list">
 ${used.join("\n")}
 </ul>
-${groups.join("\n")}
 </section>`;
 }
 
@@ -464,10 +429,10 @@ ${cards.join("\n")}
 /** The archive page: Shigeyuki's pack as he made it, and the art we made that is retired. */
 export function archivePage(coverage: Coverage, look: Look, archive: ArtArchive, note: (file: string) => string | undefined = () => undefined): string {
   const body = `<h1>Archive</h1>
-<p>What AnkiQuest-Art keeps apart from current art: Shigeyuki's Anki-tan pack as he made it, and pictures we made that were replaced. No app shows the pictures on this page; the pack files the apps use are named, with links to their cards.</p>
-${packSection(coverage, archive, look, note)}
+<p>Where Shigeyuki's Anki-tan comes from, and pictures we made that were replaced. No app shows the pictures on this page.</p>
+${packSection(coverage, archive)}
 ${retiredSection(coverage, archive, look, note)}`;
-  return layout(coverage, "AnkiQuest art archive", "Shigeyuki's Anki-tan pack and retired AnkiQuest companion pictures.", body);
+  return layout(coverage, "AnkiQuest art archive", "Shigeyuki's Anki-tan and retired AnkiQuest companion pictures.", body);
 }
 
 /** A README's first paragraph as plain text: links as their words. */

@@ -1,0 +1,252 @@
+/* The wiring page, on top of style.css's tokens. Status colours keep
+   contrast in both modes; out of date also gets a "!" mark and a thicker
+   line, so colour is never the only sign. */
+:root {
+  --line-strong: #a8a297;
+  --status-current: #15803d;
+  --status-behind: #c2410c;
+  --status-unknown: #8a857c;
+  --status-none: #b8b2a7;
+  --status-planned: #7c3aed;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --line-strong: #6b665e;
+    --status-current: #4ade80;
+    --status-behind: #fb923c;
+    --status-unknown: #a39d93;
+    --status-none: #57534c;
+    --status-planned: #c4b5fd;
+  }
+}
+
+.wiring > p {
+  max-width: 80ch;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+#controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+#controls input[type="search"] {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  max-width: 100%;
+}
+
+#controls fieldset {
+  flex: 1 1 100%;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 12px 10px;
+  min-width: 0;
+}
+
+#controls legend button {
+  font: inherit;
+  font-size: 0.8rem;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+#kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 0.9rem;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+#graph {
+  height: 70vh;
+  min-height: 420px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+#details {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+#details h2 {
+  font-size: 1.05rem;
+}
+
+#details h3 {
+  margin-top: 12px;
+  font-size: 0.95rem;
+}
+
+#details ul {
+  padding-left: 1.2em;
+}
+
+#details dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 10px;
+}
+
+#details dd {
+  margin: 0;
+}
+
+@media (min-width: 900px) {
+  .split {
+    grid-template-columns: 1fr 340px;
+  }
+
+  #details {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/* Status badges: a mark and words, not colour alone. */
+.status {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status.current {
+  color: var(--status-current);
+}
+
+.status.behind {
+  color: var(--status-behind);
+}
+
+.status.unknown,
+.status.none {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.status.planned {
+  color: var(--status-planned);
+}
+
+.legend ul {
+  list-style: none;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.swatch {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.swatch.line {
+  width: 28px;
+  border-top: 3px solid var(--status-none);
+}
+
+.swatch.line.current {
+  border-top-color: var(--status-current);
+}
+
+.swatch.line.behind {
+  border-top: 5px solid var(--status-behind);
+}
+
+.swatch.line.unknown {
+  border-top: 3px dashed var(--status-unknown);
+}
+
+.swatch.line.planned {
+  border-top: 3px dotted var(--status-planned);
+}
+
+.swatch.box,
+.swatch.oval,
+.swatch.hex {
+  width: 22px;
+  height: 14px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--card);
+}
+
+.swatch.box {
+  border-radius: 4px;
+}
+
+.swatch.box.fork {
+  border: 3px solid var(--accent);
+}
+
+.swatch.oval {
+  border-radius: 50%;
+  background: var(--tile);
+}
+
+.swatch.hex {
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  background: var(--line-strong);
+}
+
+/* The edge table scrolls inside its box; the page itself never does. */
+.scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.scroll table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.scroll th,
+.scroll td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.scroll th {
+  background: var(--tile);
+  position: sticky;
+  top: 0;
+}
+
+.scroll td small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#notes {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}

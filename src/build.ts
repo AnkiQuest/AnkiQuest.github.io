@@ -19,6 +19,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,7 +38,13 @@ import {
 } from "./art.ts";
 
 /** The files under site/ copied next to index.html. */
-const ASSETS = ["style.css"];
+const ASSETS = ["style.css", "wiring.html", "wiring.css"];
+
+/** The wiring page's script, in TypeScript under site/, stripped to JavaScript on the site. */
+const WIRING_SCRIPT = "wiring.ts";
+
+/** The wiring map's data, at the repository root, written by src/wiring.ts. */
+const WIRING_DATA = "wiring.json";
 
 /** Width of the grid previews, in pixels; masters are wider. */
 const PREVIEW_WIDTH = 480;
@@ -439,6 +446,7 @@ export function page(list: Companion[], shown: Shown): string {
 <body>
 <main>
 <h1><a href="https://ankiquest.org">AnkiQuest</a> companions</h1>
+<p><a href="wiring.html">How the AnkiQuest repositories are wired together</a></p>
 <nav>${toc}</nav>
 ${list.map((c) => section(c, shown)).join("\n")}
 </main>
@@ -460,6 +468,11 @@ export function build(server: string, out: string): void {
     copyFileSync(join(site, asset), join(out, asset));
   }
   writeFileSync(join(out, "index.html"), page(list, { art, clips }));
+
+  // The wiring page: its script without types, and the committed map.
+  const script = readFileSync(join(site, WIRING_SCRIPT), "utf8");
+  writeFileSync(join(out, WIRING_SCRIPT.replace(/\.ts$/, ".js")), stripTypeScriptTypes(script));
+  copyFileSync(join(site, "..", WIRING_DATA), join(out, WIRING_DATA));
 
   // Pictures per companion and group, so a run shows what it filed where.
   for (const companion of list) {

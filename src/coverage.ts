@@ -1,8 +1,8 @@
 // The art matrix as AnkiQuest-Server's `xtask art-coverage --json` prints
 // it (schema 1, docs/branding/art-coverage.md there): every companion by
 // every item of the pose list, the licences and the archive. Every path is
-// relative to the checkout's root, so the gallery follows the masters
-// wherever they move.
+// relative to the Server checkout's root; manifest.ts `localize` turns them
+// into AnkiQuest-Art paths before the pages are made.
 
 /** The schema this gallery reads; a newer one fails the build. */
 export const SCHEMA = 1;

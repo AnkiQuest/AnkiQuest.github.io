@@ -24,7 +24,24 @@ import {
   workflowCheckouts,
   workflowUses,
 } from "./wiring-parse.ts";
-import { boxSize, matches, pairs, statusText, visibleEdges } from "../site/wiring.ts";
+import {
+  DEFAULT_KINDS,
+  LAYOUT,
+  ROW,
+  badge,
+  bow,
+  boxSize,
+  direction,
+  fallbackLane,
+  lines,
+  matches,
+  places,
+  stacked,
+  statusText,
+  visibleEdges,
+  wrap,
+  type Place,
+} from "../site/wiring.ts";
 
 test("gitmodules reads path, url and branch", () => {
   const text = `[submodule "anki"]
@@ -275,19 +292,138 @@ test("visibleEdges filters by kind, status and search text", () => {
   assert.ok(!matches(MAP.nodes[1], "android"));
 });
 
-test("pairs draws one line per pair of nodes, with its worst status", () => {
-  const lines = pairs(MAP.edges);
-  assert.equal(lines.length, 2);
-  assert.equal(lines[0].edges.length, 2);
-  assert.equal(lines[0].status, "behind");
-  assert.equal(lines[0].mark, "! 4");
-  assert.equal(lines[1].status, "planned");
+test("lines draws one line per kind and pair of nodes, with its worst status", () => {
+  const drawn = lines(MAP.edges);
+  assert.deepEqual(
+    drawn.map((line) => [line.kind, line.status, line.mark]),
+    [
+      ["flake", "behind", "! 4"],
+      ["workflow", "current", ""],
+      ["submodule", "planned", "~"],
+    ],
+  );
+  const twice = lines([MAP.edges[0], { ...MAP.edges[0], behind: 2 }]);
+  assert.equal(twice.length, 1);
+  assert.equal(twice[0].mark, "! 2");
+  assert.equal(lines([{ ...MAP.edges[0], behind: 0 }])[0].mark, "!");
 });
 
-test("boxSize grows with lines and caps the width", () => {
-  const [width, height] = boxSize("AnkiQuest-Server\n[! out of date]");
-  const [, oneLine] = boxSize("AnkiQuest-Server");
-  assert.ok(width <= 148 && height > oneLine);
+test("wrap breaks after slashes and hyphens; boxSize grows with lines", () => {
+  assert.deepEqual(wrap("ankitects/briefcase-windows-VisualStudio-template"), ["ankitects/briefcase-windows-", "VisualStudio-template"]);
+  assert.deepEqual(wrap("AnkiQuest-Server"), ["AnkiQuest-Server"]);
+  const [width, height] = boxSize(["AnkiQuest-Server", "AGENTS.md !"]);
+  const [oneWidth, oneLine] = boxSize(["AnkiQuest-Server"]);
+  assert.equal(width, oneWidth);
+  assert.ok(height > oneLine);
+});
+
+test("the fan-out kinds start off; badges name what they would draw", () => {
+  for (const kind of ["flake", "workflow", "agents", "checkout", "vendored"] as const) {
+    assert.ok(!DEFAULT_KINDS.has(kind), kind);
+  }
+  const shown = new Set(DEFAULT_KINDS);
+  assert.deepEqual(badge(MAP, "AnkiQuest/AnkiQuest-Server", shown), ["Dev: flake !, workflow"]);
+  assert.deepEqual(badge(MAP, "AnkiQuest/AnkiQuest-Server", new Set([...shown, "flake", "workflow"])), []);
+
+  // A kind that fans out shows on its source, with the targets out of date.
+  const fan: Wiring = {
+    ...MAP,
+    nodes: [...MAP.nodes, { id: "AnkiQuest/AnkiQuest-Agents", kind: "repo", label: "AnkiQuest-Agents", readable: true }],
+    edges: [
+      { kind: "agents", from: "AnkiQuest/AnkiQuest-Agents", to: "AnkiQuest/AnkiQuest-Server", label: "AGENTS.md", status: "behind" },
+      { kind: "agents", from: "AnkiQuest/AnkiQuest-Agents", to: "AnkiQuest/AnkiQuest-Dev", label: "AGENTS.md", status: "current" },
+      { kind: "agents", from: "AnkiQuest/AnkiQuest-Agents", to: "AnkiQuest/AnkiQuest-Agents", label: "AGENTS.md", status: "behind" },
+    ],
+  };
+  assert.deepEqual(badge(fan, "AnkiQuest/AnkiQuest-Agents", shown), ["AGENTS.md → 2 (1 !)"]);
+  assert.deepEqual(badge(fan, "AnkiQuest/AnkiQuest-Server", shown), ["AGENTS.md !"]);
+  assert.deepEqual(badge(fan, "AnkiQuest/AnkiQuest-Dev", shown), ["AGENTS.md"]);
+});
+
+/** Whether two placed nodes are closer than a row on the same column. */
+function clash(a: Place, b: Place): boolean {
+  return Math.abs(a.x - b.x) < 100 && Math.abs(a.row - b.row) < 0.7;
+}
+
+/** Every pair of places that clash, by id. */
+function clashes(at: Map<string, Place>): string[] {
+  const entries = [...at.entries()];
+  return entries.flatMap(([id, place], index) => entries.slice(index + 1).filter(([, other]) => clash(place, other)).map(([other]) => `${id} / ${other}`));
+}
+
+test("places puts every node of the committed map in its lane, without overlaps, on desktop and phone", () => {
+  const map = JSON.parse(readFileSync(new URL("../wiring.json", import.meta.url), "utf8")) as Wiring;
+  const desktop = places(map);
+  assert.equal(desktop.size, map.nodes.length);
+  assert.deepEqual(clashes(desktop), []);
+  const phone = stacked(desktop);
+  assert.equal(phone.size, map.nodes.length);
+  assert.deepEqual(clashes(phone), []);
+  for (const [id, place] of desktop) {
+    assert.equal(phone.get(id)!.lane, place.lane, id);
+  }
+});
+
+test("places gives nodes missing from LAYOUT a fixed place at the bottom of their lane", () => {
+  const map: Wiring = {
+    generated: "2026-11-21T00:00:00Z",
+    notes: [],
+    nodes: [
+      { id: "AnkiQuest/AnkiQuest-Anki", kind: "fork", label: "AnkiQuest-Anki", readable: true },
+      { id: "AnkiQuest/AnkiQuest-New", kind: "repo", label: "AnkiQuest-New", readable: true },
+      { id: "AnkiQuest/AnkiQuest-Newer", kind: "repo", label: "AnkiQuest-Newer", readable: true },
+      { id: "AnkiQuest/AnkiQuest-Dev", kind: "repo", label: "AnkiQuest-Dev", readable: true },
+      { id: "someone/upstream", kind: "external", label: "someone/upstream", readable: true },
+      { id: "maven:org.example", kind: "package", label: "org.example", readable: true },
+    ],
+    edges: [{ kind: "publishes", from: "AnkiQuest/AnkiQuest-Anki", to: "maven:org.example", label: "publishes", status: "none" }],
+  };
+  const at = places(map);
+  assert.deepEqual(at.get("AnkiQuest/AnkiQuest-Anki"), LAYOUT["AnkiQuest/AnkiQuest-Anki"]);
+  assert.equal(fallbackLane(map, map.nodes[4]), "upstream");
+  assert.equal(fallbackLane(map, map.nodes[5]), "core");
+  assert.equal(at.get("maven:org.example")!.lane, "core");
+  assert.ok(at.get("maven:org.example")!.row > LAYOUT["AnkiQuest/AnkiQuest-Anki"].row);
+
+  // New repositories join the infrastructure band in order of id, each to the right of the last.
+  const [first, second] = [at.get("AnkiQuest/AnkiQuest-New")!, at.get("AnkiQuest/AnkiQuest-Newer")!];
+  assert.equal(first.lane, "infra");
+  assert.ok(first.x > LAYOUT["AnkiQuest/AnkiQuest-Dev"].x && second.x > first.x);
+  assert.deepEqual(places(map), at);
+  assert.deepEqual(clashes(at), []);
+});
+
+test("stacked keeps upstreams level with what they feed and stacks the other lanes on the right", () => {
+  const desktop = new Map<string, Place>([
+    ["up", { lane: "upstream", x: 0, row: 3 }],
+    ["anki", { lane: "core", x: 420, row: 4 }],
+    ["server", { lane: "server", x: 1150, row: 2 }],
+    ["android", { lane: "clients", x: 760, row: 12 }],
+    ["dev", { lane: "infra", x: 0, row: 18 }],
+  ]);
+  const phone = stacked(desktop);
+  assert.deepEqual(phone.get("up"), { lane: "upstream", x: 0, row: 3 });
+  const right = ["anki", "server", "android"].map((id) => phone.get(id)!);
+  assert.ok(right.every((place) => place.x === right[0].x && place.x > 0));
+  assert.ok(right[0].row < right[1].row && right[1].row < right[2].row);
+  assert.ok(phone.get("dev")!.row > Math.max(...[...phone.values()].filter((place) => place.lane !== "infra").map((place) => place.row)));
+});
+
+test("direction and bow route lines around nodes", () => {
+  const left: Place = { lane: "upstream", x: 0, row: 3 };
+  const right: Place = { lane: "core", x: 420, row: 3.5 };
+  assert.equal(direction(left, right), "rightward");
+  assert.equal(direction(right, left), "leftward");
+  assert.equal(direction(left, { ...right, row: 3 + (420 / ROW) * 2 }), "");
+
+  // A line down a column bows only when a node is in the way.
+  const top: Place = { lane: "clients", x: 235, row: 0 };
+  const middle: Place = { lane: "clients", x: 235, row: 1.3 };
+  const bottom: Place = { lane: "clients", x: 235, row: 2.6 };
+  assert.equal(bow(top, middle, [top, middle, bottom]), 0);
+  assert.ok(bow(top, bottom, [top, middle, bottom]) < 0);
+  assert.equal(bow(bottom, top, [top, middle, bottom]), -bow(top, bottom, [top, middle, bottom]));
+  assert.equal(bow(top, { ...bottom, x: 800 }, [top, middle, bottom]), 0);
 });
 
 test("the committed wiring.json has edges between known nodes", () => {

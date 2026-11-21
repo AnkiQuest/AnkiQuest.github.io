@@ -1,6 +1,7 @@
-# Builds the gallery from the art matrix (`xtask art-coverage --json`) and
-# the masters of the AnkiQuest-Server commit the `server` submodule pins,
-# and deploys it to GitHub Pages. Pull requests only test and build.
+# Builds the gallery from the art matrix (`xtask art-coverage --json`) of
+# the AnkiQuest-Server commit the `server` submodule pins and the pictures
+# and manifest of the AnkiQuest-Art commit the `art` submodule pins, and
+# deploys it to GitHub Pages. Pull requests only test and build.
 # Dependabot opens the submodule bumps.
 name: pages
 
@@ -47,7 +48,7 @@ jobs:
             exit 1
           fi
 
-      - run: nix develop -c node src/build.ts server _site "$RUNNER_TEMP/coverage.json"
+      - run: nix develop -c node src/build.ts server art _site "$RUNNER_TEMP/coverage.json"
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

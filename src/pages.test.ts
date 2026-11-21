@@ -1,11 +1,13 @@
 // Checks how the art-coverage JSON becomes pages, on a small made-up
 // matrix: present, fallback and missing cells, the missing list and its
-// issues, licences, and the archive kept apart from current art.
+// issues, licences, who drew each picture, and the archive (Shigeyuki's
+// pack and our retired art) kept apart from current art.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { documents, files, parse, type Coverage } from "./coverage.ts";
-import { archivePage, companionPage, esc, issueFor, matrixPage, pageName, type Look } from "./pages.ts";
+import type { Origin } from "./manifest.ts";
+import { archivePage, companionPage, esc, issueFor, matrixPage, pageName, type ArtArchive, type Look } from "./pages.ts";
 
 /** A small matrix in the shape `art-coverage --json` prints. */
 const COVERAGE: Coverage = {
@@ -98,12 +100,58 @@ const COVERAGE: Coverage = {
   ],
 };
 
-/** Site paths that show where each picture went, without touching disk. */
-const look: Look = (file) => ({
-  href: `files/${file}`,
-  thumb: { src: `thumbs/${file}.webp`, width: 160, height: 160 },
-  card: { src: `cards/${file}.webp`, width: 320, height: 320 },
-});
+/** Who made each made-up picture: Anki-tan's face and pack files are Shigeyuki's, the archive's sad-full ours after him. */
+function origin(file: string): Origin {
+  if (file === "static/anki-tan/face.png" || file.startsWith("archive/anki-tan-pack/")) {
+    return "shigeyuki";
+  }
+  return file.includes("anki-tan") ? "derivative" : "ankiquest";
+}
+
+/** Site paths that show where each picture went, and its credit, without touching disk. */
+const look: Look = (file) => {
+  const made = origin(file);
+  return {
+    href: `files/${file}`,
+    thumb: { src: `thumbs/${file}.webp`, width: 160, height: 160 },
+    card: { src: `cards/${file}.webp`, width: 320, height: 320 },
+    picture: {
+      file,
+      origin: made,
+      author: made === "shigeyuki" ? "Shigeyuki" : made === "derivative" ? "AnkiQuest, after Shigeyuki" : "AnkiQuest",
+      licence: file.includes("anki-tan") ? "CC-BY-SA-4.0" : "AGPL-3.0-or-later",
+      pack: made === "shigeyuki" ? "sticker/face.png" : undefined,
+    },
+  };
+};
+
+/** Art's archive, made up: two pack files, one used as a master, and one retired picture. */
+const ARCHIVE: ArtArchive = {
+  pack: {
+    companion: "anki_tan",
+    folder: "archive/anki-tan-pack/",
+    origin: "shigeyuki",
+    author: "Shigeyuki",
+    licence: "CC-BY-SA-4.0",
+    source: "https://shigeyukey.github.io/shige-addons-wiki/Anki-tan.html",
+  },
+  packReadme: "archive/anki-tan-pack/README.md",
+  packFiles: ["archive/anki-tan-pack/emoji/smile.png", "archive/anki-tan-pack/sprite/idle/0001.png"],
+  packUsed: [{ pack: "sticker/face.png", file: "static/anki-tan/face.png", uses: [{ companion: "anki_tan", pose: "face" }] }],
+  retired: [
+    {
+      companion: "anki_tan",
+      pose: "neglected",
+      file: "archive/anki-tan/sad-full.png",
+      replaced_by: "anki-tan/neglected.png",
+      note: "All stars lit.",
+      licence: "CC-BY-SA-4.0",
+      origin: "derivative",
+      author: "AnkiQuest, after Shigeyuki",
+    },
+  ],
+  retiredReadmes: ["archive/anki-tan/README.md"],
+};
 
 const aki = COVERAGE.companions[0];
 const ankiTan = COVERAGE.companions[1];
@@ -203,23 +251,63 @@ test("matrix and companion pages never show the archive", () => {
   }
 });
 
-test("archive: each folder apart, with its own licence and README", () => {
-  const html = archivePage(COVERAGE, look);
-  const tan = html.slice(html.indexOf('id="static/anki-tan/archive"'), html.indexOf('id="static/cow/archive"'));
-  assert.match(tan, /sad-full\.png/);
-  assert.match(tan, /CC-BY-SA-4\.0/);
-  assert.match(tan, /Anki-tan by Shigeyuki/);
-  assert.match(tan, /href="files\/static\/anki-tan\/archive\/README\.md"/);
-  const cow = html.slice(html.indexOf('id="static/cow/archive"'));
-  assert.match(cow, /face\.png/);
-  assert.match(cow, /AGPL-3\.0-or-later/);
-  assert.doesNotMatch(cow, /Shigeyuki/);
+test("archive: Shigeyuki's pack apart from our retired art, each with licence and README", () => {
+  const html = archivePage(COVERAGE, look, ARCHIVE, (file) => `About ${file}.`);
+  const pack = html.slice(html.indexOf('id="shigeyuki"'), html.indexOf('id="retired"'));
+  assert.match(pack, /<h2>Shigeyuki's original art<\/h2>/);
+  assert.match(pack, /CC-BY-SA-4\.0/);
+  assert.match(pack, /Anki-tan by Shigeyuki/);
+  assert.match(pack, /About archive\/anki-tan-pack\/README\.md\./);
+  assert.match(pack, /emoji\/smile\.png/);
+  assert.match(pack, /<details>\s*<summary><code>sprite\/idle<\/code>: 1 frames<\/summary>/);
+  assert.doesNotMatch(pack, /sad-full/);
+  const retired = html.slice(html.indexOf('id="retired"'));
+  assert.match(retired, /<h2>Art we made, retired<\/h2>/);
+  assert.match(retired, /About archive\/anki-tan\/README\.md\./);
+  assert.match(retired, /<li id="archive\/anki-tan\/sad-full\.png">/);
+  assert.match(retired, /Replaced by <a href="anki_tan\.html#neglected">Anki-tan: neglected<\/a>/);
+  assert.match(retired, /All stars lit\./);
+  assert.doesNotMatch(retired, /smile\.png/);
 });
 
-test("archive: no current master appears there", () => {
-  const html = archivePage(COVERAGE, look);
+test("archive: pack files the apps use are named and linked, not shown", () => {
+  const html = archivePage(COVERAGE, look, ARCHIVE);
+  assert.match(html, /<code>sticker\/face\.png<\/code>: <a href="anki_tan\.html#face">Anki-tan: face<\/a>/);
   assert.doesNotMatch(html, /static\/aki\//);
-  assert.doesNotMatch(html, /static\/anki-tan\/face\.png/);
+  assert.doesNotMatch(html, /src="[^"]*static\/anki-tan\/face\.png/);
+});
+
+test("cards credit origin, author and licence", () => {
+  const tan = companionPage(COVERAGE, ankiTan, look);
+  assert.match(card(tan, "face"), /class="credit shigeyuki">Shigeyuki&#39;s original, pack <code>sticker\/face\.png<\/code>\. Shigeyuki, <a href="files\/anki-tan\/LICENSE">CC BY-SA 4\.0<\/a>/);
+  const akiPage = companionPage(COVERAGE, aki, look);
+  assert.match(card(akiPage, "happy"), /class="credit ankiquest">Made by AnkiQuest\. AnkiQuest, <a href="files\/LICENSE">AGPL-3\.0-or-later<\/a>/);
+  assert.match(card(akiPage, "icon"), /class="credit ankiquest">/);
+  assert.doesNotMatch(card(akiPage, "frozen_2"), /credit/);
+  const archive = archivePage(COVERAGE, look, ARCHIVE);
+  assert.match(archive, /class="credit derivative">Made by AnkiQuest from Shigeyuki&#39;s Anki-tan\. AnkiQuest, after Shigeyuki/);
+});
+
+test("companion page: Shigeyuki's originals apart from ours, ours in use apart from retired", () => {
+  const tan = companionPage(COVERAGE, ankiTan, look, ARCHIVE.retired);
+  const list = tan.slice(tan.indexOf('<h2 id="origin">'), tan.indexOf('<h2 id="missing">'));
+  assert.match(list, /Shigeyuki's original art, from his Anki-tan pack: <a href="#face">face<\/a>\./);
+  assert.match(list, /Art we made, in use: <a href="#icon">icon<\/a>\./);
+  assert.match(list, /Art we made, retired: <a href="archive\.html#archive\/anki-tan\/sad-full\.png">neglected<\/a>/);
+  const akiPage = companionPage(COVERAGE, aki, look);
+  assert.doesNotMatch(akiPage, /Shigeyuki's original art/);
+  assert.match(akiPage, /Art we made, in use: <a href="#face">face<\/a>, <a href="#happy">happy<\/a>, <a href="#level_up">level up<\/a>, <a href="#unlisted">study\.png<\/a>\./);
+  assert.match(akiPage, /Art we made, retired: none\./);
+});
+
+test("matrix: Shigeyuki's originals are marked; shared pictures have their own section", () => {
+  const shared = [{ name: "friends", shows: ["aki", "anki_tan"], file: "duo/friends.png", licence: "AGPL-3.0-or-later", origin: "ankiquest" as const, author: "AnkiQuest" }];
+  const html = matrixPage(COVERAGE, look, shared);
+  assert.match(cell(html, "anki_tan", "face"), /data-origin="shigeyuki"/);
+  assert.match(cell(html, "aki", "face"), /data-origin="ankiquest"/);
+  assert.doesNotMatch(cell(html, "aki", "frozen_2"), /data-origin/);
+  assert.match(html, /<h2 id="shared">Pictures of several companions<\/h2>[\s\S]*duo\/friends\.png[\s\S]*Made by AnkiQuest/);
+  assert.doesNotMatch(matrixPage(COVERAGE, look), /id="shared"/);
 });
 
 test("companion page: one licence line with the credit it requires", () => {

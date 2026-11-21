@@ -1,19 +1,22 @@
-// Builds the gallery from an AnkiQuest-Server checkout:
-//   node src/build.ts <server-checkout> <out-dir> [coverage.json]
-// Reads the art matrix from `xtask art-coverage --json` (run in the
-// checkout, or read from coverage.json when given), copies every picture,
-// licence and README it names byte for byte under files/<path>, makes two
-// WebP previews of each picture (matrix and card size) and writes the
-// matrix, a page per companion and the archive. Previews need cwebp
+// Builds the gallery from an AnkiQuest-Server and an AnkiQuest-Art checkout:
+//   node src/build.ts <server-checkout> <art-checkout> <out-dir> [coverage.json]
+// Reads the art matrix from `xtask art-coverage --json` (run in the Server
+// checkout, or read from coverage.json when given) and who made each
+// picture from Art's manifest.json. Finds every picture the matrix shows in
+// Art, copies it and the licences and READMEs byte for byte under
+// files/<Art path>, makes two WebP previews of each picture (matrix and card
+// size) and writes the matrix, a page per companion and the archive
+// (Shigeyuki's pack and our retired art). Previews need cwebp
 // (Debian/Ubuntu package webp).
 
 import { execFileSync } from "node:child_process";
-import { closeSync, copyFileSync, mkdirSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { documents, files, parse, type Coverage } from "./coverage.ts";
+import { hash, localize, packUsed, pictures as artPictures, readManifest, walk, type Manifest, type Picture } from "./manifest.ts";
 import {
   archivePage,
   companionPage,
@@ -21,6 +24,7 @@ import {
   firstParagraph,
   matrixPage,
   pageName,
+  type ArtArchive,
   type Image,
   type Look,
   type Shown,
@@ -108,42 +112,87 @@ function preview(master: string, out: string, src: string, size: [number, number
   return { src, width, height };
 }
 
-/** Copies `path` from the checkout to files/ on the site unchanged. */
-function copy(server: string, out: string, path: string): void {
+/** Copies `path` from the Art checkout to files/ on the site unchanged. */
+function copy(art: string, out: string, path: string): void {
   const target = join(out, fileHref(path));
   mkdirSync(dirname(target), { recursive: true });
-  copyFileSync(join(server, path), target);
+  copyFileSync(join(art, path), target);
 }
 
 /** Copies every picture and makes its previews; returns where each one is. */
-function pictures(server: string, out: string, coverage: Coverage): Map<string, Shown> {
+function pictures(art: string, out: string, list: string[], known: Map<string, Picture>): Map<string, Shown> {
   const shown = new Map<string, Shown>();
-  for (const file of files(coverage)) {
-    const master = join(server, file);
+  for (const file of list) {
+    const master = join(art, file);
     const size = pngSize(master);
     if (size === undefined) {
       throw new Error(`${file} is not a PNG; the gallery previews PNGs only`);
     }
-    copy(server, out, file);
+    const picture = known.get(file);
+    if (picture === undefined) {
+      throw new Error(`${file} is not in manifest.json`);
+    }
+    copy(art, out, file);
     const base = `${PREVIEWS}/${file.replace(/\.png$/i, "")}`;
     shown.set(file, {
       href: fileHref(file),
       thumb: preview(master, out, `${base}-${THUMB_WIDTH}.webp`, size, THUMB_WIDTH),
       card: preview(master, out, `${base}-${CARD_WIDTH}.webp`, size, CARD_WIDTH),
+      picture,
     });
   }
   return shown;
 }
 
+/** Finds a Server file in Art by its bytes: Art moved the pictures without editing them. */
+function sameBytes(server: string, art: string, known: Map<string, Picture>): (file: string) => string | undefined {
+  let byHash: Map<string, string> | undefined;
+  return (file) => {
+    if (!existsSync(join(server, file))) {
+      return undefined;
+    }
+    byHash ??= new Map([...known.keys()].map((path) => [hash(join(art, path)), path]));
+    return byHash.get(hash(join(server, file)));
+  };
+}
+
+/** Art's archive for the archive page. */
+function artArchive(art: string, data: Manifest): ArtArchive {
+  const pack = data.archive.pack;
+  const folder = pack.folder.replace(/\/$/, "");
+  const readme = (dir: string) => (existsSync(join(art, dir, "README.md")) ? `${dir}/README.md` : null);
+  const retiredFolders = [...new Set(data.archive.retired.map((entry) => entry.file.slice(0, entry.file.lastIndexOf("/"))))].sort();
+  return {
+    pack,
+    packReadme: readme(folder),
+    packFiles: walk(art, folder),
+    packUsed: packUsed(data),
+    retired: data.archive.retired,
+    retiredReadmes: retiredFolders.flatMap((dir) => readme(dir) ?? []),
+  };
+}
+
 /** Builds the site into `out`, replacing what was there. */
-export function build(server: string, out: string, coverageFile?: string): void {
-  const coverage = readCoverage(server, coverageFile);
+export function build(server: string, art: string, out: string, coverageFile?: string): void {
+  const data = readManifest(art);
+  const known = artPictures(art, data);
+  const coverage = localize(readCoverage(server, coverageFile), data, known, sameBytes(server, art, known));
+  const archive = artArchive(art, data);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
 
-  // Pictures, licence texts and READMEs, as the checkout lays them out.
-  const shown = pictures(server, out, coverage);
-  documents(coverage).forEach((path) => copy(server, out, path));
+  // Pictures, licence texts and READMEs, as Art lays them out.
+  const list = [
+    ...new Set([
+      ...files(coverage),
+      ...data.shared.map((entry) => entry.file),
+      ...archive.packFiles,
+      ...archive.retired.map((entry) => entry.file),
+    ]),
+  ].sort();
+  const shown = pictures(art, out, list, known);
+  const docs = [...documents(coverage), ...(archive.packReadme === null ? [] : [archive.packReadme]), ...archive.retiredReadmes];
+  [...new Set(docs)].forEach((path) => copy(art, out, path));
   const look: Look = (file) => {
     const found = shown.get(file);
     if (found === undefined) {
@@ -153,12 +202,13 @@ export function build(server: string, out: string, coverageFile?: string): void 
   };
 
   // The matrix, a page per companion and the archive.
-  writeFileSync(join(out, "index.html"), matrixPage(coverage, look));
+  writeFileSync(join(out, "index.html"), matrixPage(coverage, look, data.shared));
   for (const companion of coverage.companions) {
-    writeFileSync(join(out, pageName(companion)), companionPage(coverage, companion, look));
+    const retired = data.archive.retired.filter((entry) => entry.companion === companion.id);
+    writeFileSync(join(out, pageName(companion)), companionPage(coverage, companion, look, retired));
   }
-  const note = (file: string) => firstParagraph(readFileSync(join(server, file), "utf8"));
-  writeFileSync(join(out, "archive.html"), archivePage(coverage, look, note));
+  const note = (file: string) => firstParagraph(readFileSync(join(art, file), "utf8"));
+  writeFileSync(join(out, "archive.html"), archivePage(coverage, look, archive, note));
 
   // The stylesheet, and the wiring page: its script without types, and the committed map.
   const site = join(dirname(fileURLToPath(import.meta.url)), "..", "site");
@@ -174,15 +224,15 @@ export function build(server: string, out: string, coverageFile?: string): void 
     const { core, extensions } = companion.missing;
     console.log(`${companion.id}: ${core.length} core and ${extensions.length} extensions missing`);
   }
-  console.log(`${coverage.companions.length} companions, ${shown.size} pictures, ${coverage.archive.length} archive folders, into ${out}`);
+  console.log(`${coverage.companions.length} companions, ${shown.size} pictures (${archive.packFiles.length} of Shigeyuki's pack, ${archive.retired.length} retired), into ${out}`);
 }
 
 // Run when called as a script, not when imported by the tests.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [server, out, coverage] = process.argv.slice(2);
-  if (!server || !out) {
-    console.error("usage: node src/build.ts <server-checkout> <out-dir> [coverage.json]");
+  const [server, art, out, coverage] = process.argv.slice(2);
+  if (!server || !art || !out) {
+    console.error("usage: node src/build.ts <server-checkout> <art-checkout> <out-dir> [coverage.json]");
     process.exit(2);
   }
-  build(server, out, coverage);
+  build(server, art, out, coverage);
 }

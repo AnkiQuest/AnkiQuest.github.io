@@ -15,13 +15,14 @@
 <main class="wiring">
 <h1><a href="index.html">AnkiQuest</a> wiring</h1>
 <p>How every AnkiQuest repository, upstream and package feeds the others: submodules, Maven and Cargo dependencies, Nix flake inputs, reusable workflows, pinned AnkiQuest-Server data, <code>AGENTS.md</code> from AnkiQuest-Agents, upstream merges and watched sources. Arrows point the way code or data flows. Regenerated daily from the repositories' default branches.</p>
+<p>Lanes group the repositories by role, in the order code flows: upstreams, core, clients and app forks, server and web, with shared infrastructure along the bottom. On a phone the upstreams stay on the left and the other lanes stack on the right. Flake inputs, reusable workflows, CI checkouts, vendored code and <code>AGENTS.md</code> start hidden and show as badges on each repository, such as “Dev: flake !, 4 workflows”. Hover over, click or tap a node or line to focus on it and its neighbours; Escape or a click on empty space clears the focus.</p>
 <p id="summary">Loading wiring.json…</p>
 
 <div id="controls">
 <label class="search">Search <input id="search" type="search" placeholder="repository or package"></label>
 <label><input id="outdated" type="checkbox"> Only out of date</label>
 <fieldset>
-<legend>Edge kinds <button id="all" type="button">all</button> <button id="none" type="button">none</button></legend>
+<legend>Edge kinds <button id="main" type="button">main</button> <button id="all" type="button">all</button> <button id="none" type="button">none</button></legend>
 <div id="kinds"></div>
 </fieldset>
 </div>
@@ -34,12 +35,11 @@
 <section class="legend" aria-label="Legend">
 <h2>Legend</h2>
 <ul>
-<li><span class="swatch line current"></span> up to date</li>
-<li><span class="swatch line behind"></span> <span class="status behind">! out of date</span> (thick, marked “!” with the commits behind)</li>
-<li><span class="swatch line unknown"></span> unknown: not readable (dashed)</li>
-<li><span class="swatch line planned"></span> <span class="status planned">~ planned</span> (dotted)</li>
-<li><span class="swatch line none"></span> no version to compare</li>
-<li><span class="swatch box"></span> AnkiQuest repository; <span class="swatch box fork"></span> fork (thick border); <span class="swatch oval"></span> upstream or other source; <span class="swatch hex"></span> package; dashed border: planned repository</li>
+<li>Each edge kind has its own colour and line style, shown next to its checkbox above.</li>
+<li><span class="status behind">! out of date</span>: thick line marked “!” with the commits behind (or the number of edges, when a line holds several); a node with an out-of-date line into it gets a thick border and a “!” before its name; in a badge, “!” after the item.</li>
+<li><span class="status unknown">? unknown</span>: not readable. <span class="status planned">~ planned</span>: decided, not made yet (faint line, dashed node).</li>
+<li><span class="swatch box"></span> AnkiQuest repository; <span class="swatch box fork"></span> fork (double border); <span class="swatch oval"></span> upstream or other source; <span class="swatch hex"></span> package; faded: no line shown for the current filters.</li>
+<li>Badges below a repository's name list the hidden kinds: “Dev: flake !, 4 workflows” is a flake input and four reusable workflows from AnkiQuest-Dev, the flake input out of date; “AGENTS.md → 13 (12 !)” is a file sent to 13 repositories, 12 of them out of date.</li>
 </ul>
 </section>
 

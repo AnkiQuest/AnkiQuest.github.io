@@ -1,8 +1,11 @@
-// The gallery's pages, as HTML strings, from the art-coverage JSON: the
-// matrix (index.html), one page per companion and the archive. Pure
-// functions; build.ts writes the files and makes the previews.
+// The gallery's pages, as HTML strings, from the art-coverage JSON with
+// AnkiQuest-Art paths (manifest.ts `localize`): the matrix (index.html),
+// one page per companion and the archive. Every picture card credits its
+// origin, author and licence from Art's manifest. Pure functions; build.ts
+// writes the files and makes the previews.
 
-import { drawn, type Archive, type Cell, type Companion, type Coverage, type Licence } from "./coverage.ts";
+import { drawn, type Cell, type Companion, type Coverage, type Licence } from "./coverage.ts";
+import { licence as licenceOf, originName, type PackEntry, type Picture, type RetiredEntry, type SharedEntry } from "./manifest.ts";
 
 /** Folder on the site for files copied unchanged, at their checkout paths. */
 export const FILES = "files";
@@ -44,15 +47,37 @@ export interface Image {
   height: number;
 }
 
-/** Where a picture is on the site: the master, a matrix thumbnail and a card preview. */
+/** Where a picture is on the site (the master, a matrix thumbnail and a card preview) and who to credit. */
 export interface Shown {
   href: string;
   thumb: Image;
   card: Image;
+  picture: Picture;
 }
 
-/** Finds a picture's place on the site by its checkout path. */
+/** Finds a picture's place on the site by its Art path. */
 export type Look = (file: string) => Shown;
+
+/** Art's archive, for the archive page: Shigeyuki's pack and the retired pictures. */
+export interface ArtArchive {
+  pack: PackEntry;
+  /** The pack folder's README, by Art path. */
+  packReadme: string | null;
+  /** The files of the pack folder: the pack minus the files that became masters. */
+  packFiles: string[];
+  /** The pack files that became masters: pack path, Art file, and the companions and poses they show. */
+  packUsed: { pack: string; file: string; uses: { companion: string; pose: string }[] }[];
+  retired: RetiredEntry[];
+  /** READMEs of the folders that hold retired pictures, by Art path. */
+  retiredReadmes: string[];
+}
+
+/** The credit line of a card: origin, author and licence. */
+function credit(picture: Picture): string {
+  const { name, file } = licenceOf(picture.licence);
+  const pack = picture.pack === undefined ? "" : `, pack <code>${esc(picture.pack)}</code>`;
+  return `<small class="credit ${picture.origin}">${esc(originName(picture.origin))}${pack}. ${esc(picture.author)}, <a href="${esc(fileHref(file))}">${esc(name)}</a></small>`;
+}
 
 /** Escapes text for HTML content and attribute values. */
 export function esc(text: string): string {
@@ -150,27 +175,28 @@ function cellOf(companion: Companion, item: string): Cell {
   return found;
 }
 
-/** One matrix cell: the picture, the fallback it shows, or "missing". */
+/** One matrix cell: the picture, the fallback it shows, or "missing"; Shigeyuki's originals are marked. */
 function matrixCell(companion: Companion, cell: Cell, look: Look): string {
-  const open = `<td data-companion="${esc(companion.id)}" data-item="${esc(cell.name)}" class="${cell.status}">`;
+  const shown = cell.status === "missing" ? undefined : look(cell.file);
+  const origin = shown === undefined ? "" : ` data-origin="${shown.picture.origin}"`;
+  const open = `<td data-companion="${esc(companion.id)}" data-item="${esc(cell.name)}" class="${cell.status}"${origin}>`;
   const alt = `${companion.name}, ${words(cell.name)}`;
+  const title = shown === undefined ? "" : ` title="${esc(`${originName(shown.picture.origin)}, ${shown.picture.author}`)}"`;
   switch (cell.status) {
     case "present": {
-      const shown = look(cell.file);
-      return `${open}<a href="${esc(shown.href)}">${img(shown.thumb, alt)}</a></td>`;
+      return `${open}<a href="${esc(shown!.href)}"${title}>${img(shown!.thumb, alt)}</a></td>`;
     }
     case "fallback": {
-      const shown = look(cell.file);
       const label = `shows ${words(cell.shows)}`;
-      return `${open}<a href="${esc(shown.href)}">${img(shown.thumb, `${alt}: ${label}`)}</a><span>${esc(label)}</span></td>`;
+      return `${open}<a href="${esc(shown!.href)}"${title}>${img(shown!.thumb, `${alt}: ${label}`)}</a><span>${esc(label)}</span></td>`;
     }
     case "missing":
       return `${open}<span>missing</span></td>`;
   }
 }
 
-/** The matrix: every item by every companion with a picture; index.html. */
-export function matrixPage(coverage: Coverage, look: Look): string {
+/** The matrix: every item by every companion with a picture, then the pictures several companions share; index.html. */
+export function matrixPage(coverage: Coverage, look: Look, shared: SharedEntry[] = []): string {
   const columns = coverage.companions.filter(drawn);
   const empty = coverage.companions.filter((companion) => !drawn(companion));
 
@@ -199,9 +225,17 @@ ${rows.join("\n")}
     ? `<p>Nothing drawn yet: ${empty.map((c) => `<a href="${esc(pageName(c))}">${esc(c.name)}</a>`).join(", ")}.</p>`
     : "";
 
+  // Pictures of several companions together, such as the friends panel.
+  const together = shared.length > 0
+    ? `<h2 id="shared">Pictures of several companions</h2>
+<ul class="grid">
+${shared.map((entry) => fileCard(entry.file, "", entry.shows.map((id) => coverage.companions.find((c) => c.id === id)?.name ?? id).join(" and "), look)).join("\n")}
+</ul>`
+    : "";
+
   const body = `<h1>Art matrix</h1>
 <p>Every companion by every item of the pose list (<code>${esc(coverage.fixture)}</code>). The goal is every item drawn for every companion. Core items are needed to go live; a missing item shows its fallback until it is drawn.</p>
-<p class="legend"><span class="present">drawn</span> <span class="fallback">fallback: shows another item</span> <span class="missing">missing: shows nothing</span></p>
+<p class="legend"><span class="present">drawn</span> <span class="fallback">fallback: shows another item</span> <span class="missing">missing: shows nothing</span> <span class="shigeyuki">Shigeyuki's original</span></p>
 <div class="matrix-wrap">
 <table class="matrix">
 <thead><tr><th scope="col">Item</th>${heads.join("")}</tr></thead>
@@ -209,7 +243,8 @@ ${groups.join("\n")}
 </table>
 </div>
 ${planned}
-<p>Each companion's page lists what it is missing and why. Replaced and retired pictures are in the <a href="archive.html">archive</a>, apart from current art.</p>`;
+<p>Each companion's page lists what it is missing and why, and who drew each picture: Shigeyuki's original Anki-tan art, or art AnkiQuest made. Shigeyuki's pack as he made it and our retired pictures are in the <a href="archive.html">archive</a>, apart from current art.</p>
+${together}`;
   return layout(coverage, "AnkiQuest art matrix", "Every AnkiQuest companion by every pose: drawn, fallback or missing.", body);
 }
 
@@ -222,23 +257,24 @@ function itemCard(companion: Companion, cell: Cell, look: Look): string {
     case "present": {
       const shown = look(cell.file);
       const file = cell.file.slice(cell.file.lastIndexOf("/") + 1);
-      return `${open}<a href="${esc(shown.href)}">${img(shown.card, alt)}</a><div class="caption">${name}<small>${esc(file)}</small></div></li>`;
+      return `${open}<a href="${esc(shown.href)}">${img(shown.card, alt)}</a><div class="caption">${name}<small>${esc(file)}</small>${credit(shown.picture)}</div></li>`;
     }
     case "fallback": {
       const shown = look(cell.file);
       const label = `fallback: shows ${words(cell.shows)}`;
-      return `${open}<a href="${esc(shown.href)}">${img(shown.card, `${alt}: ${label}`)}</a><div class="caption">${name}<small>${esc(label)}</small></div></li>`;
+      return `${open}<a href="${esc(shown.href)}">${img(shown.card, `${alt}: ${label}`)}</a><div class="caption">${name}<small>${esc(label)}</small>${credit(shown.picture)}</div></li>`;
     }
     case "missing":
       return `${open}<div class="blank">missing</div><div class="caption">${name}<small>shows nothing</small></div></li>`;
   }
 }
 
-/** A card for a picture that is no item: its file name. */
-function fileCard(file: string, base: string, alt: string, look: Look): string {
+/** A card for a picture that is no item: its file name, an optional note and its credit. */
+function fileCard(file: string, base: string, alt: string, look: Look, note = ""): string {
   const shown = look(file);
-  const name = file.startsWith(`${base}/`) ? file.slice(base.length + 1) : file;
-  return `<li><a href="${esc(shown.href)}">${img(shown.card, alt)}</a><div class="caption"><b>${esc(name)}</b></div></li>`;
+  const name = base !== "" && file.startsWith(`${base}/`) ? file.slice(base.length + 1) : file;
+  const extra = note === "" ? "" : `<small>${note}</small>`;
+  return `<li><a href="${esc(shown.href)}">${img(shown.card, alt)}</a><div class="caption"><b>${esc(name)}</b>${extra}${credit(shown.picture)}</div></li>`;
 }
 
 /** "1 extension", "2 core items". */
@@ -275,8 +311,35 @@ ${group.rows.join("\n")}
     .join("\n");
 }
 
-/** One companion's page: licence, what is missing and why, then every item. */
-export function companionPage(coverage: Coverage, companion: Companion, look: Look): string {
+/**
+ * Who drew the companion's pictures: Shigeyuki's originals apart from the
+ * art we made, and ours in use apart from ours retired (in the archive).
+ */
+function originList(companion: Companion, look: Look, retired: RetiredEntry[]): string {
+  const drawnItems = companion.items.flatMap((cell) => (cell.status === "present" ? [{ anchor: cell.name, label: words(cell.name), file: cell.file }] : []));
+  const loose = companion.unlisted.map((file) => ({ anchor: "unlisted", label: file.slice(file.lastIndexOf("/") + 1), file }));
+  const all = [...drawnItems, ...loose];
+  if (all.length === 0 && retired.length === 0) {
+    return "";
+  }
+  const links = (list: typeof all) => list.map((entry) => `<a href="#${esc(entry.anchor)}">${esc(entry.label)}</a>`).join(", ");
+  const theirs = all.filter((entry) => look(entry.file).picture.origin === "shigeyuki");
+  const ours = all.filter((entry) => look(entry.file).picture.origin !== "shigeyuki");
+  const rows: string[] = [];
+  if (theirs.length > 0) {
+    rows.push(`<li>Shigeyuki's original art, from his Anki-tan pack: ${links(theirs)}.</li>`);
+  }
+  rows.push(`<li>Art we made, in use: ${ours.length > 0 ? `${links(ours)}.` : "none."}</li>`);
+  const old = retired.map((entry) => `<a href="archive.html#${esc(entry.file)}">${esc(words(entry.pose))}</a>`);
+  rows.push(`<li>Art we made, retired: ${old.length > 0 ? `${old.join(", ")} (in the archive).` : "none."}</li>`);
+  return `<h2 id="origin">Who drew it</h2>
+<ul class="origin-list">
+${rows.join("\n")}
+</ul>`;
+}
+
+/** One companion's page: licence, who drew it, what is missing and why, then every item. */
+export function companionPage(coverage: Coverage, companion: Companion, look: Look, retired: RetiredEntry[] = []): string {
   const licence = coverage.licences[companion.licence];
   const stage = companion.stage === "live" ? "Live in the apps." : "Planned: not in the apps yet.";
   const present = companion.items.filter((cell) => cell.status === "present").length;
@@ -306,6 +369,7 @@ ${companion.unlisted.map((file) => fileCard(file, companion.folder, `${companion
   const body = `<h1>${esc(companion.name)}</h1>
 <p>${stage} ${summary}</p>
 ${licenceLine(licence, "Every picture on this page")}
+${originList(companion, look, retired)}
 <h2 id="missing">Missing</h2>
 <p>Until it is drawn, a missing item shows its fallback.</p>
 ${missingList(coverage, companion)}
@@ -314,31 +378,96 @@ ${unlisted}`;
   return layout(coverage, `${companion.name}: AnkiQuest companion`, `What ${companion.name} has, what is missing and why.`, body);
 }
 
-/** One archive folder: its licence, README and pictures. */
-function archiveSection(coverage: Coverage, folder: Archive, look: Look, note: (file: string) => string | undefined): string {
-  const licence = coverage.licences[folder.licence];
-  const text = folder.readme === null ? undefined : note(folder.readme);
-  const readme = folder.readme === null
-    ? ""
-    : `<p>${text ? `${linked(text)} ` : ""}<a href="${esc(fileHref(folder.readme))}">README</a></p>`;
-  const cards = folder.files.map((file) => fileCard(file, folder.folder, file, look));
-  return `<section id="${esc(folder.folder)}">
-<h2><code>${esc(folder.folder)}</code></h2>
-${licenceLine(licence, "Every picture in this folder")}
-${readme}
-<ul class="grid">
-${cards.join("\n")}
+/** The licence the matrix names for `spdx`, with its credit; else the bare licence. */
+function licenceFor(coverage: Coverage, spdx: string): Licence {
+  return Object.values(coverage.licences).find((entry) => entry.spdx === spdx) ?? { spdx, file: licenceOf(spdx).file, credit: null };
+}
+
+/** A README's first paragraph and a link to it. */
+function readmeLine(readme: string, note: (file: string) => string | undefined): string {
+  const text = note(readme);
+  return `<p>${text ? `${linked(text)} ` : ""}<a href="${esc(fileHref(readme))}">README</a></p>`;
+}
+
+/** A link to the card of `pose` on `id`'s page. */
+function poseLink(coverage: Coverage, id: string, pose: string): string {
+  const companion = coverage.companions.find((entry) => entry.id === id);
+  const label = `${companion?.name ?? id}: ${words(pose)}`;
+  return companion === undefined ? esc(label) : `<a href="${esc(pageName(companion))}#${esc(pose)}">${esc(label)}</a>`;
+}
+
+/**
+ * Shigeyuki's original art: his pack as he made it. The files that became
+ * masters are named with what they show (their cards are on the companion
+ * pages); the rest are cards, folder by folder, the animation frames folded.
+ */
+function packSection(coverage: Coverage, archive: ArtArchive, look: Look, note: (file: string) => string | undefined): string {
+  const { pack } = archive;
+  const base = pack.folder.replace(/\/$/, "");
+  const used = archive.packUsed.map(
+    (entry) => `<li><code>${esc(entry.pack)}</code>: ${entry.uses.map((use) => poseLink(coverage, use.companion, use.pose)).join(", ")}</li>`,
+  );
+
+  // The rest of the pack, by folder.
+  const folders = new Map<string, string[]>();
+  for (const file of archive.packFiles) {
+    const path = file.slice(base.length + 1);
+    const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    folders.set(dir, [...(folders.get(dir) ?? []), file]);
+  }
+  const groups = [...folders].map(([dir, files]) => {
+    const cards = `<ul class="grid">
+${files.map((file) => fileCard(file, `${base}/${dir}`.replace(/\/$/, ""), file, look)).join("\n")}
+</ul>`;
+    const title = dir === "" ? "Top folder" : dir;
+    // Animation frames: many near-identical pictures, folded away.
+    if (dir.split("/").length > 1) {
+      return `<details>
+<summary><code>${esc(title)}</code>: ${files.length} frames</summary>
+${cards}
+</details>`;
+    }
+    return `<h3><code>${esc(title)}</code></h3>
+${cards}`;
+  });
+
+  return `<section id="shigeyuki">
+<h2>Shigeyuki's original art</h2>
+${licenceLine(licenceFor(coverage, pack.licence), "Every picture in his pack")}
+${archive.packReadme === null ? `<p>${esc(pack.author)}'s Anki-tan asset pack (<a href="${esc(pack.source)}">${esc(pack.source)}</a>).</p>` : readmeLine(archive.packReadme, note)}
+<h3>Pack files the apps use</h3>
+<p>Kept as masters, unchanged; their cards are on the companion pages.</p>
+<ul class="missing-list">
+${used.join("\n")}
 </ul>
+${groups.join("\n")}
 </section>`;
 }
 
-/** The archive page: replaced masters and earlier copies, folder by folder. */
-export function archivePage(coverage: Coverage, look: Look, note: (file: string) => string | undefined = () => undefined): string {
-  const sections = coverage.archive.map((folder) => archiveSection(coverage, folder, look, note));
+/** Art we made that the apps no longer use, each with the master that replaced it. */
+function retiredSection(coverage: Coverage, archive: ArtArchive, look: Look, note: (file: string) => string | undefined): string {
+  const cards = archive.retired.map((entry) => {
+    const shown = look(entry.file);
+    const why = `Replaced by ${poseLink(coverage, entry.companion, entry.pose)} (<code>${esc(entry.replaced_by)}</code>).${entry.note ? ` ${esc(entry.note)}` : ""}`;
+    const name = entry.file.slice(entry.file.lastIndexOf("/") + 1);
+    return `<li id="${esc(entry.file)}"><a href="${esc(shown.href)}">${img(shown.card, entry.file)}</a><div class="caption"><b>${esc(name)}</b><small>${why}</small>${credit(shown.picture)}</div></li>`;
+  });
+  return `<section id="retired">
+<h2>Art we made, retired</h2>
+${archive.retiredReadmes.map((readme) => readmeLine(readme, note)).join("\n")}
+${cards.length > 0 ? `<ul class="grid">
+${cards.join("\n")}
+</ul>` : "<p>Nothing retired.</p>"}
+</section>`;
+}
+
+/** The archive page: Shigeyuki's pack as he made it, and the art we made that is retired. */
+export function archivePage(coverage: Coverage, look: Look, archive: ArtArchive, note: (file: string) => string | undefined = () => undefined): string {
   const body = `<h1>Archive</h1>
-<p>Masters that were replaced, redrawn or retired, and earlier copies, kept byte for byte. None of them is current art, and no app shows them.</p>
-${sections.length > 0 ? sections.join("\n") : "<p>The archive is empty.</p>"}`;
-  return layout(coverage, "AnkiQuest art archive", "Replaced and retired AnkiQuest companion pictures.", body);
+<p>What AnkiQuest-Art keeps apart from current art: Shigeyuki's Anki-tan pack as he made it, and pictures we made that were replaced. No app shows the pictures on this page; the pack files the apps use are named, with links to their cards.</p>
+${packSection(coverage, archive, look, note)}
+${retiredSection(coverage, archive, look, note)}`;
+  return layout(coverage, "AnkiQuest art archive", "Shigeyuki's Anki-tan pack and retired AnkiQuest companion pictures.", body);
 }
 
 /** A README's first paragraph as plain text: links as their words. */

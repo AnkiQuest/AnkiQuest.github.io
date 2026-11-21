@@ -1,21 +1,21 @@
 # AnkiQuest companions
 
-The gallery at <https://ankiquest.github.io>: every picture of every companion, from [AnkiQuest-Art](https://github.com/AnkiQuest/AnkiQuest-Art). Each companion's section has:
+The gallery at <https://ankiquest.github.io>: the art matrix of every companion by every item of AnkiQuest-Server's pose list (`tests/fixtures/companion_poses.json`), each cell drawn, showing its fallback, or missing; a page per companion with what it is missing, why and the issue tracking it; and the archive, apart from current art. Every picture card shows who made it, its author and its licence, from [AnkiQuest-Art](https://github.com/AnkiQuest/AnkiQuest-Art)'s `manifest.json`:
 
-- a table of the poses in AnkiQuest-Server's `tests/fixtures/companion_poses.json` and what the companion shows for each: its master, a fallback, or missing;
-- Shigeyuki's original art: his Anki-tan asset pack as he made it, under Anki-tan, with the pictures the apps use marked; under Anki-tan chibi, the pack pictures she uses;
-- art we made: derivatives of Shigeyuki's Anki-tan (CC BY-SA 4.0) and AnkiQuest's own companions (AGPL-3.0-or-later), split into what the apps use (Art's masters) and what is retired (Art's archive).
+- Shigeyuki's original art: files of his Anki-tan asset pack, unchanged. Each companion page lists them apart from the art we made; the archive page has his pack as he made it, naming the files the apps use;
+- art we made: derivatives of Shigeyuki's Anki-tan (CC BY-SA 4.0) and AnkiQuest's own companions (AGPL-3.0-or-later), in use (the masters, on the matrix and companion pages) or retired (Art's archive, on the archive page).
 
-Every card shows the picture's author and licence. `src/art.ts` reads them from Art's `manifest.json` (`origin`, `author`, `licence`, `pack`, `missing`, `archive`); a picture in Art the manifest does not list, or a picture with no entry in `NOTES`, fails the build.
+Anki-tan chibi has her own column and page as a future companion.
 
-The pictures come from the AnkiQuest-Art commit the `art` submodule pins, and the pose list, unlocks and moods from the AnkiQuest-Server commit the `server` submodule pins; Dependabot opens a pull request when either moves.
+What each companion shows comes from AnkiQuest-Server's `xtask art-coverage --json` (schema 1, `docs/branding/art-coverage.md` there), run in the AnkiQuest-Server commit the `server` submodule pins. The pictures, credits and archive come from the AnkiQuest-Art commit the `art` submodule pins: `src/manifest.ts` finds each picture the matrix shows in Art (the master for that companion and item, or else the Art picture with the same bytes) and copies it to `files/<Art path>` with its WebP previews. A picture in Art that the manifest does not list, a licence the gallery does not know, a picture the matrix shows that Art does not have, or a licence in Art that differs from the companion's in the matrix fails the build. Dependabot opens a pull request when either submodule moves.
 
 ```sh
 git submodule update --init
-node src/build.ts server art _site
+node src/build.ts server art _site                 # runs cargo in server/
+node src/build.ts server art _site coverage.json   # or reads the JSON from a file
 ```
 
-Run it in the dev shell (`nix develop`), which has Node 22, `cwebp` and `webpmux`. The `pages` workflow builds and deploys on every push to `master`.
+Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`; the first form also needs `cargo`. `npm test` checks how the JSON and Art's manifest become pages. The `pages` workflow builds and deploys on every push to `master`.
 
 ## Wiring map
 
@@ -31,4 +31,4 @@ The page lays the map out by hand: `LAYOUT` in `site/wiring.ts` places every nod
 
 ## Licence
 
-AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep their licence in AnkiQuest-Art; the gallery shows each picture's author and licence from its manifest, and the credit from each companion's `LICENSE`.
+AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep their licence in AnkiQuest-Art; the gallery shows each picture's author and licence from its manifest, and the licence and credit art-coverage gives for each companion.

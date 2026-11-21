@@ -2,6 +2,13 @@
 // filters by edge kind, a search box, details of the selected node or edge
 // and a table of every edge shown. build.ts strips the types into wiring.js.
 // The helpers above main() are pure, so the tests import this file in Node.
+//
+// The map has a fixed layout: lanes by role, left to right in the order code
+// flows (upstreams, core, clients, server), and shared infrastructure as a
+// band along the bottom. Every node's place is in LAYOUT, so the picture is
+// the same after each regeneration; a node missing there gets a place in its
+// lane by a fixed rule. Fan-out kinds (flake inputs, reusable workflows,
+// AGENTS.md) are off by default and shown as badges on the repositories.
 
 import type { EdgeKind, Status, Wiring, WiringEdge, WiringNode } from "../src/wiring-model.ts";
 
@@ -22,6 +29,50 @@ export const KIND_NAMES: Record<EdgeKind, string> = {
   runtime: "Runtime links",
 };
 
+/**
+ * The kinds drawn as lines by default: how code and packages flow. The
+ * others fan out from one repository to most of the rest; they start off
+ * and show as badges on the repositories instead.
+ */
+export const DEFAULT_KINDS: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["upstream", "watched", "submodule", "cargo", "maven", "publishes", "data", "runtime"]);
+
+/** A line style, so kinds differ by more than colour. */
+type LineStyle = "solid" | "dashed" | "dotted";
+
+/** Each kind's line style; its colour is the `--kind-<kind>` token in wiring.css. */
+export const KIND_LINES: Record<EdgeKind, LineStyle> = {
+  upstream: "solid",
+  watched: "dashed",
+  submodule: "solid",
+  flake: "dashed",
+  cargo: "solid",
+  maven: "solid",
+  publishes: "dashed",
+  vendored: "dotted",
+  workflow: "dotted",
+  checkout: "dotted",
+  data: "dashed",
+  agents: "dashed",
+  runtime: "dotted",
+};
+
+/** Each kind in a badge, singular and plural. */
+const KIND_NOUNS: Record<EdgeKind, [string, string]> = {
+  upstream: ["upstream", "upstreams"],
+  watched: ["watched", "watched"],
+  submodule: ["submodule", "submodules"],
+  flake: ["flake", "flakes"],
+  cargo: ["crate", "crates"],
+  maven: ["artifact", "artifacts"],
+  publishes: ["publishes", "publishes"],
+  vendored: ["vendored", "vendored"],
+  workflow: ["workflow", "workflows"],
+  checkout: ["checkout", "checkouts"],
+  data: ["pinned data", "pinned data"],
+  agents: ["AGENTS.md", "AGENTS.md"],
+  runtime: ["runtime link", "runtime links"],
+};
+
 /** Each status in words; out of date also gets a mark, so colour is never the only sign. */
 const STATUS_NAMES: Record<Status, string> = {
   current: "up to date",
@@ -29,6 +80,15 @@ const STATUS_NAMES: Record<Status, string> = {
   unknown: "unknown",
   none: "no version",
   planned: "planned",
+};
+
+/** The mark of a status on lines, badges and nodes. */
+const STATUS_MARKS: Record<Status, string> = {
+  current: "",
+  behind: "!",
+  unknown: "?",
+  none: "",
+  planned: "~",
 };
 
 /** What the filters let through. */
@@ -72,6 +132,348 @@ export function visibleEdges(map: Wiring, filter: Filter): WiringEdge[] {
   });
 }
 
+// --- Layout ----------------------------------------------------------------------------
+
+/** The map's lanes, by role. */
+export type Lane = "upstream" | "core" | "clients" | "forks" | "server" | "infra";
+
+/** Each lane's heading, in the order lanes stack on a phone. */
+export const LANES: Record<Lane, string> = {
+  upstream: "Upstreams and watched sources",
+  core: "Core",
+  clients: "Clients",
+  forks: "Third-party app forks",
+  server: "Server and web",
+  infra: "Shared infrastructure",
+};
+
+/** A node's place: its lane, the x of its centre in pixels and its row. */
+export interface Place {
+  lane: Lane;
+  x: number;
+  row: number;
+}
+
+/** Height of a row, in pixels. */
+export const ROW = 60;
+
+/** Columns of the desktop map, in pixels: x of the node centres. */
+const X = {
+  upstream: 0,
+  core: 420,
+  coreSide: 570,
+  clients: 760,
+  clientsSide: 950,
+  server: 1150,
+  serverSide: 1320,
+};
+
+/** Row of the shared infrastructure band. */
+const INFRA_ROW = 18.4;
+
+/**
+ * Every node's place on the desktop map, chosen by hand so lines cross as
+ * little as possible: upstreams in one column, grouped by the repository
+ * they feed and level with it; packages next to the repository that
+ * publishes them.
+ */
+export const LAYOUT: Record<string, Place> = {
+  // Upstreams of AnkiQuest-Anki: submodules, the upstream merge, crates, then watched sources.
+  "ankitects/anki-core-i18n": { lane: "upstream", x: X.upstream, row: 0 },
+  "ankitects/anki-desktop-ftl": { lane: "upstream", x: X.upstream, row: 0.75 },
+  "ankitects/briefcase-macOS-app-template": { lane: "upstream", x: X.upstream, row: 1.6 },
+  "ankitects/briefcase-windows-VisualStudio-template": { lane: "upstream", x: X.upstream, row: 2.6 },
+  "ankitects/anki": { lane: "upstream", x: X.upstream, row: 3.5 },
+  "ankitects/rust-url": { lane: "upstream", x: X.upstream, row: 4.25 },
+  "ankitects/linkcheck": { lane: "upstream", x: X.upstream, row: 5 },
+  "JSchoreels/fsrs-rs": { lane: "upstream", x: X.upstream, row: 5.75 },
+  "JSchoreels/anki": { lane: "upstream", x: X.upstream, row: 6.5 },
+  "open-spaced-repetition/fsrs-rs": { lane: "upstream", x: X.upstream, row: 7.25 },
+  "Pedrubik2000/kuma3-anki-core": { lane: "upstream", x: X.upstream, row: 8 },
+
+  // Upstreams of the backend and of AnkiQuest-Android, and upstream's artifact the third-party apps use.
+  "ankidroid/Anki-Android-Backend": { lane: "upstream", x: X.upstream, row: 8.9 },
+  "Pedrubik2000/kuma3-anki-backend": { lane: "upstream", x: X.upstream, row: 9.75 },
+  "Pedrubik2000/kuma3-anki-app": { lane: "upstream", x: X.upstream, row: 11.3 },
+  "ankidroid/Anki-Android": { lane: "upstream", x: X.upstream, row: 12.3 },
+  "maven:com.github.ankidroid": { lane: "upstream", x: X.upstream, row: 13.1 },
+
+  // Upstreams of the third-party app forks, level with each fork.
+  "KamWithK/AnkiconnectAndroid": { lane: "upstream", x: X.upstream, row: 14.4 },
+  "sypianski/garmanki": { lane: "upstream", x: X.upstream, row: 15.6 },
+  "ankimcp/ankidroid-mcp": { lane: "upstream", x: X.upstream, row: 16.8 },
+
+  // Core: Anki's core, the backend built from it, and the backend artifacts.
+  "AnkiQuest/AnkiQuest-Anki": { lane: "core", x: X.core, row: 4.2 },
+  "AnkiQuest/AnkiQuest-Android-Backend": { lane: "core", x: X.core, row: 9.4 },
+  "maven:org.ankiquest": { lane: "core", x: X.coreSide, row: 10.4 },
+  "maven:io.github.david-allison": { lane: "core", x: X.core, row: 11.3 },
+
+  // Clients, and the api module AnkiQuest-Android publishes.
+  "AnkiQuest/AnkiQuest-Desktop": { lane: "clients", x: X.clients, row: 7 },
+  "AnkiQuest/AnkiQuest-Android": { lane: "clients", x: X.clients, row: 12.3 },
+  "maven:com.ichi2.anki": { lane: "clients", x: X.clientsSide, row: 12.3 },
+
+  // Third-party app forks, in a staircase so the content provider lines from AnkiQuest-Android never cross a fork.
+  "AnkiQuest/AnkiQuest-AnkiConnectAndroid": { lane: "forks", x: 720, row: 14.4 },
+  "AnkiQuest/AnkiQuest-GarmAnki": { lane: "forks", x: 910, row: 15.6 },
+  "AnkiQuest/AnkiQuest-Android-MCP": { lane: "forks", x: 1100, row: 16.8 },
+
+  // Server and web.
+  "AnkiQuest/AnkiQuest-Art": { lane: "server", x: X.server, row: 3.5 },
+  "AnkiQuest/AnkiQuest-Server": { lane: "server", x: X.server, row: 7 },
+  "AnkiQuest/AnkiQuest.github.io": { lane: "server", x: X.serverSide, row: 5.2 },
+
+  // Shared infrastructure, along the bottom.
+  "AnkiQuest/AnkiQuest-Dev": { lane: "infra", x: X.upstream, row: INFRA_ROW },
+  "AnkiQuest/AnkiQuest-Agents": { lane: "infra", x: X.core, row: INFRA_ROW },
+  "AnkiQuest/AnkiQuest-Sync": { lane: "infra", x: X.clients, row: INFRA_ROW },
+  "AnkiQuest/AnkiQuest-Hosting": { lane: "infra", x: X.clientsSide + 30, row: INFRA_ROW },
+  "float3/nixos": { lane: "infra", x: X.server + 30, row: INFRA_ROW },
+};
+
+/** Where a lane's column is, for nodes LAYOUT does not place. */
+const LANE_X: Record<Lane, number> = {
+  upstream: X.upstream,
+  core: X.core,
+  clients: X.clients,
+  forks: X.clientsSide,
+  server: X.server,
+  infra: X.upstream,
+};
+
+/** Space between a node placed by the fallback and the one before it: in pixels across, in rows down. */
+const FALLBACK_STEP = 210;
+const FALLBACK_ROWS = 1.25;
+
+/**
+ * The lane of a node LAYOUT does not place: an upstream's is the upstream
+ * lane, a package's its publisher's, a fork's the app forks and any other
+ * repository's the shared infrastructure.
+ */
+export function fallbackLane(map: Wiring, node: WiringNode): Lane {
+  switch (node.kind) {
+    case "external":
+      return "upstream";
+    case "fork":
+      return "forks";
+    case "repo":
+      return "infra";
+    case "package": {
+      const publisher = map.edges.find((edge) => edge.kind === "publishes" && edge.to === node.id)?.from;
+      const owner = map.nodes.find((candidate) => candidate.id === publisher);
+      if (!owner || owner.kind === "package") {
+        return "core";
+      }
+      return LAYOUT[owner.id]?.lane ?? fallbackLane(map, owner);
+    }
+  }
+}
+
+/**
+ * Every node's place: LAYOUT's, or for a node it lacks, a row below the
+ * lowest node of its lane, in the lane's column (in the infrastructure
+ * band, the next column to the right), in order of id so the result never
+ * changes.
+ */
+export function places(map: Wiring): Map<string, Place> {
+  const result = new Map<string, Place>();
+  for (const node of map.nodes) {
+    const place = LAYOUT[node.id];
+    if (place) {
+      result.set(node.id, place);
+    }
+  }
+  const missing = map.nodes.filter((node) => !result.has(node.id)).sort((a, b) => a.id.localeCompare(b.id));
+  for (const node of missing) {
+    const lane = fallbackLane(map, node);
+    const taken = [...result.values()].filter((place) => place.lane === lane);
+    if (lane === "infra") {
+      const x = Math.max(LANE_X.infra - FALLBACK_STEP, ...taken.map((place) => place.x)) + FALLBACK_STEP;
+      result.set(node.id, { lane, x, row: INFRA_ROW });
+      continue;
+    }
+    const lowest = Math.max(-1, ...taken.map((place) => place.row));
+    result.set(node.id, { lane, x: LANE_X[lane], row: lowest + FALLBACK_ROWS });
+  }
+  return result;
+}
+
+/** The phone's two columns: upstreams on the left, the other lanes stacked on the right. */
+const PHONE_RIGHT = 235;
+
+/** Lanes stacked in the phone's right column, top to bottom: the server sits above the clients it feeds. */
+const PHONE_STACK: Lane[] = ["core", "server", "clients", "forks"];
+
+/** Rows between two nodes, and between two lanes (for the gap and the heading), on a phone. */
+const PHONE_ROW_STEP = 1.3;
+const PHONE_LANE_GAP = 0.9;
+
+/**
+ * The phone layout: the upstreams keep their desktop rows in the left
+ * column, so each stays level with what it feeds; the other lanes stack
+ * in the right column in their desktop order (top to bottom, then left to
+ * right); the shared infrastructure flows into both columns below.
+ */
+export function stacked(desktop: Map<string, Place>): Map<string, Place> {
+  const result = new Map<string, Place>();
+  const inLane = (lane: Lane): string[] =>
+    [...desktop.entries()]
+      .filter(([, place]) => place.lane === lane)
+      .sort(([, a], [, b]) => a.row - b.row || a.x - b.x)
+      .map(([id]) => id);
+
+  // Upstreams: the left column, as on the desktop.
+  for (const id of inLane("upstream")) {
+    result.set(id, { ...desktop.get(id)!, x: 0 });
+  }
+
+  // The other lanes, one under the other in the right column.
+  let row = 0;
+  for (const lane of PHONE_STACK) {
+    const ids = inLane(lane);
+    for (const id of ids) {
+      result.set(id, { lane, x: PHONE_RIGHT, row });
+      row += PHONE_ROW_STEP;
+    }
+    if (ids.length > 0) {
+      row += PHONE_LANE_GAP;
+    }
+  }
+
+  // Shared infrastructure: two columns under everything else.
+  const top = Math.max(row, ...[...result.values()].map((place) => place.row + PHONE_ROW_STEP)) + PHONE_LANE_GAP;
+  inLane("infra").forEach((id, index) => {
+    result.set(id, { lane: "infra", x: (index % 2) * PHONE_RIGHT, row: top + Math.floor(index / 2) * PHONE_ROW_STEP });
+  });
+  return result;
+}
+
+// --- Labels and badges -------------------------------------------------------------------
+
+/** Characters on one line of a node, and their width and height in pixels at 11px. */
+const LINE_CHARS = 30;
+const CHAR_WIDTH = 6.2;
+const LINE_HEIGHT = 15;
+
+/** Wraps text into lines of at most `max` characters, breaking after spaces, slashes and hyphens. */
+export function wrap(text: string, max = LINE_CHARS): string[] {
+  const words = text.match(/[^\s/-]+[\s/-]*|[\s/-]+/g) ?? [text];
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (line && (line + word).trimEnd().length > max) {
+      lines.push(line.trimEnd());
+      line = "";
+    }
+    line += word;
+  }
+  lines.push(line.trimEnd());
+  return lines;
+}
+
+/** A node's box for its label lines, plus padding. */
+export function boxSize(lines: string[]): [number, number] {
+  const longest = Math.max(...lines.map((line) => line.length));
+  return [longest * CHAR_WIDTH + 20, lines.length * LINE_HEIGHT + 14];
+}
+
+/** A repository's short name in a badge: AnkiQuest-Dev is "Dev". */
+function shortName(id: string): string {
+  return (id.split("/").pop() ?? id).replace(/^AnkiQuest-/, "");
+}
+
+/** Statuses from worst to best: a group of edges shows its worst. */
+const SEVERITY: Status[] = ["behind", "unknown", "planned", "current", "none"];
+
+/** The worst status of some edges. */
+function worst(edges: WiringEdge[]): Status {
+  return SEVERITY.find((name) => edges.some((edge) => edge.status === name)) ?? "none";
+}
+
+/** A count and a noun: "flake", "4 workflows". */
+function counted(kind: EdgeKind, count: number): string {
+  const [one, many] = KIND_NOUNS[kind];
+  return count === 1 ? one : `${count} ${many}`;
+}
+
+/** A badge piece's status mark, after a space, or nothing. */
+function marked(edges: WiringEdge[]): string {
+  const mark = STATUS_MARKS[worst(edges)];
+  return mark ? ` ${mark}` : "";
+}
+
+/** Groups items by a key, keeping first-seen order. */
+function groupBy<T>(items: T[], key: (item: T) => string): T[][] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    groups.set(key(item), [...(groups.get(key(item)) ?? []), item]);
+  }
+  return [...groups.values()];
+}
+
+/**
+ * The badge of a node: what the hidden edge kinds would draw, in words. In:
+ * "Dev: flake !, 4 workflows", "AGENTS.md !". Out, for a kind that fans
+ * out to two or more nodes: "AGENTS.md → 13 (12 !)".
+ */
+export function badge(map: Wiring, id: string, shown: Set<EdgeKind>): string[] {
+  const hidden = map.edges.filter((edge) => !shown.has(edge.kind) && edge.from !== edge.to);
+  const pieces: string[] = [];
+
+  // What the node takes, by source: AGENTS.md alone, as it always comes from AnkiQuest-Agents.
+  const into = hidden.filter((edge) => edge.to === id);
+  for (const group of groupBy(into, (edge) => (edge.kind === "agents" ? "" : edge.from))) {
+    const parts = groupBy(group, (edge) => edge.kind).map((edges) => `${counted(edges[0].kind, edges.length)}${marked(edges)}`);
+    pieces.push(group[0].kind === "agents" ? parts.join(", ") : `${shortName(group[0].from)}: ${parts.join(", ")}`);
+  }
+
+  // What the node feeds, for kinds that fan out.
+  const out = hidden.filter((edge) => edge.from === id);
+  for (const edges of groupBy(out, (edge) => edge.kind)) {
+    const targets = new Set(edges.map((edge) => edge.to)).size;
+    if (targets < 2) {
+      continue;
+    }
+    const behind = new Set(edges.filter((edge) => edge.status === "behind").map((edge) => edge.to)).size;
+    pieces.push(`${KIND_NOUNS[edges[0].kind][1]} → ${targets}${behind ? ` (${behind} !)` : ""}`);
+  }
+
+  // Pieces joined into lines, breaking only between pieces.
+  const lines: string[] = [];
+  for (const piece of pieces) {
+    const last = lines.length - 1;
+    if (last >= 0 && `${lines[last]} · ${piece}`.length <= LINE_CHARS + 4) {
+      lines[last] = `${lines[last]} · ${piece}`;
+    } else {
+      lines.push(piece);
+    }
+  }
+  return lines;
+}
+
+/** The edges between one pair of nodes of one kind, drawn as one line. */
+export interface Line {
+  from: string;
+  to: string;
+  kind: EdgeKind;
+  edges: WiringEdge[];
+  status: Status;
+  mark: string;
+}
+
+/** Groups edges by kind and ends; the line's status is its worst edge's, its mark counts what is out of date. */
+export function lines(edges: WiringEdge[]): Line[] {
+  return groupBy(edges, (edge) => `${edge.kind}\n${edge.from}\n${edge.to}`).map((group) => {
+    const status = worst(group);
+    const behind = group.filter((edge) => edge.status === "behind");
+    const mark = status !== "behind" ? STATUS_MARKS[status] : behind.length === 1 ? `! ${behind[0].behind || ""}`.trim() : `! ${behind.length}`;
+    return { from: group[0].from, to: group[0].to, kind: group[0].kind, edges: group, status, mark };
+  });
+}
+
+// --- Details and table -------------------------------------------------------------------
+
 /** A commit hash shortened; versions unchanged. */
 function short(value: string | undefined): string {
   if (value === undefined) {
@@ -96,173 +498,14 @@ function linked(text: string): string {
 }
 
 /** The status badge: a mark and the words, coloured by status. */
-function badge(edge: WiringEdge): string {
-  const mark = edge.status === "behind" ? "! " : edge.status === "planned" ? "~ " : "";
-  return `<span class="status ${edge.status}">${mark}${esc(statusText(edge))}</span>`;
+function statusBadge(edge: WiringEdge): string {
+  const mark = STATUS_MARKS[edge.status];
+  return `<span class="status ${edge.status}">${mark ? `${mark} ` : ""}${esc(statusText(edge))}</span>`;
 }
 
-// --- The page in the browser ---------------------------------------------------------
-
-/** The Cytoscape.js global the page loads from cdnjs; only what is used here. */
-interface CyElement {
-  id(): string;
-  data(key: string): unknown;
-  style(name: string, value: string): void;
-}
-interface CyCollection {
-  forEach(each: (element: CyElement) => void): void;
-}
-interface Cy {
-  on(event: string, selector: string | ((event: { target: unknown }) => void), handler?: (event: { target: CyElement }) => void): void;
-  elements(): { remove(): void };
-  add(elements: unknown[]): void;
-  layout(options: Record<string, unknown>): { run(): void };
-  style(sheet: unknown[]): void;
-  nodes(): CyCollection;
-  resize(): void;
-  fit(padding?: number): void;
-}
-declare const cytoscape: (options: Record<string, unknown>) => Cy;
-
-/** Reads a colour token from the stylesheet. */
-function token(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
-
-/** The Cytoscape style, from the page's colour tokens (light or dark). */
-function graphStyle(): unknown[] {
-  const status = (name: Status): string => token(`--status-${name}`);
-  return [
-    {
-      selector: "node",
-      style: {
-        label: "data(label)",
-        "text-wrap": "wrap",
-        "text-max-width": "130px",
-        "font-size": "11px",
-        color: token("--ink"),
-        "text-valign": "center",
-        "text-halign": "center",
-        "background-color": token("--card"),
-        "border-width": 1.5,
-        "border-color": token("--line-strong"),
-        shape: "round-rectangle",
-        width: "data(width)",
-        height: "data(height)",
-      },
-    },
-    { selector: "node[kind = 'fork']", style: { "border-width": 3, "border-color": token("--accent") } },
-    { selector: "node[kind = 'external']", style: { shape: "ellipse", "background-color": token("--tile"), color: token("--muted") } },
-    { selector: "node[kind = 'package']", style: { shape: "hexagon", "background-color": token("--tile") } },
-    { selector: "node[?planned]", style: { "border-style": "dashed", color: token("--muted") } },
-    { selector: "node[?outdated]", style: { "border-color": status("behind"), "border-width": 3 } },
-    { selector: "node:selected", style: { "overlay-color": token("--accent"), "overlay-opacity": 0.2 } },
-    {
-      selector: "edge",
-      style: {
-        width: 1.6,
-        "curve-style": "bezier",
-        "target-arrow-shape": "triangle",
-        "arrow-scale": 0.9,
-        "line-color": status("none"),
-        "target-arrow-color": status("none"),
-        opacity: 0.85,
-      },
-    },
-    ...(["current", "behind", "unknown", "planned"] as Status[]).map((name) => ({
-      selector: `edge[status = '${name}']`,
-      style: { "line-color": status(name), "target-arrow-color": status(name) },
-    })),
-    { selector: "edge[status = 'behind']", style: { width: 3, label: "data(mark)", "font-size": "10px", color: status("behind"), "text-background-color": token("--bg"), "text-background-opacity": 1 } },
-    { selector: "edge[status = 'unknown']", style: { "line-style": "dashed" } },
-    { selector: "edge[status = 'planned']", style: { "line-style": "dotted", width: 2.4 } },
-    { selector: "edge:selected", style: { width: 4, opacity: 1 } },
-  ];
-}
-
-/** Lane of a node, left to right: upstreams, our repositories, packages. */
-function lane(node: WiringNode): number {
-  switch (node.kind) {
-    case "external":
-      return 0;
-    case "fork":
-      return 1;
-    case "repo":
-      return 2;
-    case "package":
-      return 3;
-  }
-}
-
-/** Width of a node label's character, and of a line, in pixels at 11px. */
-const CHAR_WIDTH = 6.4;
-const LINE_HEIGHT = 15;
-
-/** A node's box for its label: the longest line (at most 130px wide) and the line count, plus padding. */
-export function boxSize(label: string): [number, number] {
-  const lines = label.split("\n");
-  const longest = Math.max(...lines.map((line) => line.length));
-  const wrapped = lines.reduce((count, line) => count + Math.max(1, Math.ceil((line.length * CHAR_WIDTH) / 130)), 0);
-  return [Math.min(130, longest * CHAR_WIDTH) + 18, wrapped * LINE_HEIGHT + 14];
-}
-
-/** Statuses from worst to best: a line between two nodes shows its worst edge. */
-const SEVERITY: Status[] = ["behind", "unknown", "planned", "current", "none"];
-
-/** The edges between one pair of nodes, drawn as one line. */
-export interface Pair {
-  from: string;
-  to: string;
-  edges: WiringEdge[];
-  status: Status;
-  mark: string;
-}
-
-/** Groups edges by their two ends; the line's status is its worst edge's, its mark counts what is out of date. */
-export function pairs(edges: WiringEdge[]): Pair[] {
-  const byEnds = new Map<string, WiringEdge[]>();
-  for (const edge of edges) {
-    const key = `${edge.from}\n${edge.to}`;
-    byEnds.set(key, [...(byEnds.get(key) ?? []), edge]);
-  }
-  return [...byEnds.values()].map((group) => {
-    const status = SEVERITY.find((name) => group.some((edge) => edge.status === name)) ?? "none";
-    const behind = group.filter((edge) => edge.status === "behind");
-    const mark = behind.length === 1 ? `! ${behind[0].behind ?? ""}`.trim() : `! ${behind.length}`;
-    return { from: group[0].from, to: group[0].to, edges: group, status, mark };
-  });
-}
-
-/** Cytoscape elements for the edges shown and the nodes they touch (all our repositories always). */
-function elements(map: Wiring, edges: WiringEdge[], search: string): unknown[] {
-  const used = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
-  const outdated = new Set(map.edges.filter((edge) => edge.status === "behind").map((edge) => edge.to));
-  const nodes = map.nodes.filter((node) => used.has(node.id) || ((node.kind === "repo" || node.kind === "fork") && (!search || matches(node, search))));
-  // Starting positions: our repositories on an inner ring, upstreams and packages outside.
-  const inner = nodes.filter((node) => lane(node) === 1 || lane(node) === 2);
-  const outer = nodes.filter((node) => !inner.includes(node));
-  const ring = (node: WiringNode): { x: number; y: number } => {
-    const list = inner.includes(node) ? inner : outer;
-    const radius = inner.includes(node) ? 320 : 720;
-    const angle = (2 * Math.PI * list.indexOf(node)) / list.length;
-    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
-  };
-  const nodeElements = nodes.map((node) => {
-    const mark = outdated.has(node.id) ? "\n[! out of date]" : node.planned ? "\n(planned)" : "";
-    const label = `${node.label}${mark}`;
-    const [width, height] = boxSize(label);
-    return {
-      group: "nodes",
-      data: { id: node.id, label, width, height, kind: node.kind, planned: node.planned === true, outdated: outdated.has(node.id) },
-      position: ring(node),
-    };
-  });
-  // One line per pair of nodes; a self-loop (AnkiQuest-Agents' own AGENTS.md) is in the table only.
-  const edgeElements = pairs(edges.filter((edge) => edge.from !== edge.to)).map((pair, index) => ({
-    group: "edges",
-    data: { id: `e${index}`, source: pair.from, target: pair.to, status: pair.status, indices: pair.edges.map((edge) => map.edges.indexOf(edge)).join(","), mark: pair.mark },
-  }));
-  return [...nodeElements, ...edgeElements];
+/** A small line in a kind's colour and style, for the filters. */
+function swatch(kind: EdgeKind): string {
+  return `<span class="swatch kind ${KIND_LINES[kind]}" style="--kind: var(--kind-${kind})"></span>`;
 }
 
 /** The details of a node: what it is and every edge into and out of it. */
@@ -279,7 +522,7 @@ function nodeDetails(map: Wiring, id: string): string {
   const list = (edges: WiringEdge[], other: (edge: WiringEdge) => string): string =>
     edges.length === 0
       ? "<p class=\"muted\">None.</p>"
-      : `<ul>${edges.map((edge) => `<li>${esc(KIND_NAMES[edge.kind])}: <b>${esc(other(edge))}</b>, ${esc(edge.label)} ${badge(edge)}${edge.source ? ` ${link("file", edge.source)}` : ""}</li>`).join("")}</ul>`;
+      : `<ul>${edges.map((edge) => `<li>${esc(KIND_NAMES[edge.kind])}: <b>${esc(other(edge))}</b>, ${esc(edge.label)} ${statusBadge(edge)}${edge.source ? ` ${link("file", edge.source)}` : ""}</li>`).join("")}</ul>`;
   const into = map.edges.filter((edge) => edge.to === id);
   const out = map.edges.filter((edge) => edge.from === id);
   return `<h2>${link(node.label, node.url)}</h2>${facts}<h3>Takes from</h3>${list(into, (edge) => edge.from)}<h3>Feeds</h3>${list(out, (edge) => edge.to)}`;
@@ -294,7 +537,7 @@ function edgeDetails(edge: WiringEdge): string {
     ["What", esc(edge.label)],
     ["Pinned", edge.pinned ? `<code>${esc(short(edge.pinned))}</code>` : ""],
     ["Latest", edge.latest ? `<code>${esc(short(edge.latest))}</code>` : ""],
-    ["Status", badge(edge)],
+    ["Status", statusBadge(edge)],
     ["Detail", edge.detail ? linked(edge.detail) : ""],
     ["File", edge.source ? link(edge.source.replace(/^https:\/\/github\.com\//, ""), edge.source) : ""],
   ].filter(([, value]) => value);
@@ -306,10 +549,229 @@ function table(edges: WiringEdge[]): string {
   const body = edges
     .map(
       (edge) =>
-        `<tr><td>${esc(KIND_NAMES[edge.kind])}</td><td>${esc(edge.from)}</td><td>${esc(edge.to)}</td><td>${esc(edge.label)}</td><td><code>${esc(short(edge.pinned))}</code></td><td><code>${esc(short(edge.latest))}</code></td><td>${badge(edge)}${edge.detail ? `<br><small>${linked(edge.detail)}</small>` : ""}</td><td>${edge.source ? link("file", edge.source) : ""}</td></tr>`,
+        `<tr><td>${esc(KIND_NAMES[edge.kind])}</td><td>${esc(edge.from)}</td><td>${esc(edge.to)}</td><td>${esc(edge.label)}</td><td><code>${esc(short(edge.pinned))}</code></td><td><code>${esc(short(edge.latest))}</code></td><td>${statusBadge(edge)}${edge.detail ? `<br><small>${linked(edge.detail)}</small>` : ""}</td><td>${edge.source ? link("file", edge.source) : ""}</td></tr>`,
     )
     .join("");
   return `<table><thead><tr><th>Kind</th><th>From</th><th>To</th><th>What</th><th>Pinned</th><th>Latest</th><th>Status</th><th>Source</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// --- The page in the browser ---------------------------------------------------------
+
+/** The Cytoscape.js global the page loads from cdnjs; only what is used here. */
+interface CyCollection {
+  addClass(name: string): CyCollection;
+  removeClass(name: string): CyCollection;
+  not(other: CyCollection | string): CyCollection;
+  union(other: CyCollection): CyCollection;
+  unselect(): CyCollection;
+  remove(): CyCollection;
+  boundingBox(): { x1: number; y1: number; w: number; h: number };
+}
+interface CyElement extends CyCollection {
+  id(): string;
+  data(key: string): unknown;
+  isNode(): boolean;
+  closedNeighborhood(): CyCollection;
+  connectedNodes(): CyCollection;
+}
+interface Cy {
+  on(event: string, selector: string, handler: (event: { target: CyElement }) => void): void;
+  on(event: string, handler: (event: { target: unknown }) => void): void;
+  elements(selector?: string): CyCollection;
+  add(elements: unknown[]): void;
+  layout(options: Record<string, unknown>): { run(): void };
+  style(sheet: unknown[]): void;
+  resize(): void;
+  fit(elements?: CyCollection, padding?: number): void;
+  zoom(level: number): void;
+  pan(position: { x: number; y: number }): void;
+  width(): number;
+}
+declare const cytoscape: (options: Record<string, unknown>) => Cy;
+
+/** Below this page width the lanes stack, as on a phone. */
+const NARROW = 700;
+
+/** Padding around the map in the graph box, in pixels. */
+const PADDING = 16;
+
+/** The tallest the graph box grows on a wide screen, as a share of the window. */
+const MAX_HEIGHT = 0.88;
+
+/** The graph box's height on a narrow screen, as a share of the window; the map pans inside. */
+const NARROW_HEIGHT = 0.8;
+
+/** Reads a colour token from the stylesheet. */
+function token(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/** The Cytoscape style, from the page's colour tokens (light or dark). */
+function graphStyle(): unknown[] {
+  const kinds = Object.keys(KIND_NAMES) as EdgeKind[];
+  return [
+    {
+      selector: "node",
+      style: {
+        label: "data(label)",
+        "text-wrap": "wrap",
+        "text-max-width": "400px",
+        "font-size": "11px",
+        "line-height": 1.3,
+        color: token("--ink"),
+        "text-valign": "center",
+        "text-halign": "center",
+        "background-color": token("--card"),
+        "border-width": 1.5,
+        "border-color": token("--line-strong"),
+        shape: "round-rectangle",
+      },
+    },
+    { selector: "node[width]", style: { width: "data(width)", height: "data(height)" } },
+    { selector: "node[kind = 'fork']", style: { "border-width": 4, "border-style": "double", "border-color": token("--accent") } },
+    { selector: "node[kind = 'external']", style: { "corner-radius": 14, "background-color": token("--tile"), color: token("--muted"), "border-color": token("--line") } },
+    { selector: "node[kind = 'package']", style: { shape: "cut-rectangle", "background-color": token("--tile") } },
+    { selector: "node[?planned]", style: { "border-style": "dashed", color: token("--muted") } },
+    { selector: "node[?outdated]", style: { "border-color": token("--status-behind"), "border-width": 3 } },
+    { selector: "node[kind = 'fork'][?outdated]", style: { "border-width": 5 } },
+    {
+      selector: "node.lane",
+      style: {
+        shape: "round-rectangle",
+        "corner-radius": 16,
+        "background-color": token("--lane"),
+        "background-opacity": 1,
+        "border-width": 0,
+        padding: 14,
+        "text-valign": "top",
+        "text-halign": "center",
+        "text-margin-y": -6,
+        "font-size": "13px",
+        "font-weight": 600,
+        color: token("--muted"),
+        events: "no",
+      },
+    },
+    { selector: "node.idle", style: { opacity: 0.35 } },
+    { selector: "node.match", style: { "underlay-color": token("--accent"), "underlay-opacity": 0.25, "underlay-padding": 6 } },
+    { selector: "node:selected", style: { "overlay-color": token("--accent"), "overlay-opacity": 0.2 } },
+    {
+      selector: "edge",
+      style: {
+        width: 1.8,
+        "curve-style": "bezier",
+        "control-point-step-size": 30,
+        "target-arrow-shape": "triangle",
+        "arrow-scale": 0.9,
+        opacity: 0.9,
+        "font-size": "10px",
+        "font-weight": 700,
+        "text-background-color": token("--card"),
+        "text-background-opacity": 1,
+        "text-background-padding": 2,
+        "text-rotation": "none",
+      },
+    },
+    ...kinds.map((kind) => ({
+      selector: `edge[kind = '${kind}']`,
+      style: { "line-color": token(`--kind-${kind}`), "target-arrow-color": token(`--kind-${kind}`), "line-style": KIND_LINES[kind] },
+    })),
+    { selector: "edge.bow", style: { "curve-style": "unbundled-bezier", "control-point-distances": "data(bow)", "control-point-weights": 0.5 } },
+    { selector: "edge.rightward", style: { "source-endpoint": "50% 0%", "target-endpoint": "-50% 0%" } },
+    { selector: "edge.leftward", style: { "source-endpoint": "-50% 0%", "target-endpoint": "50% 0%" } },
+    { selector: "edge[status = 'behind']", style: { width: 3.2, label: "data(mark)", color: token("--status-behind") } },
+    { selector: "edge[status = 'unknown']", style: { label: "data(mark)", color: token("--muted") } },
+    { selector: "edge[status = 'planned']", style: { label: "data(mark)", color: token("--status-planned"), opacity: 0.6 } },
+    { selector: "edge:selected", style: { width: 4.5, opacity: 1 } },
+
+    // Focus: what is not next to the focused node or edge fades.
+    { selector: ".faded", style: { opacity: 0.12, "text-opacity": 0.25 } },
+    { selector: "edge.faded", style: { opacity: 0.06, "text-opacity": 0 } },
+  ];
+}
+
+/** How much wider than tall, and how wide in pixels, a line must run to leave and enter its nodes at their sides. */
+const SIDEWAYS = 1.3;
+const SIDEWAYS_MIN = 250;
+
+/**
+ * A line running mostly sideways leaves its source's side and enters its
+ * target's facing side ("rightward" or "leftward"), so lines out of a
+ * column of upstreams do not cut through the neighbours of their source.
+ */
+export function direction(from: Place, to: Place): string {
+  const dx = to.x - from.x;
+  const dy = (to.row - from.row) * ROW;
+  if (Math.abs(dx) < SIDEWAYS_MIN || Math.abs(dx) < SIDEWAYS * Math.abs(dy)) {
+    return "";
+  }
+  return dx > 0 ? "rightward" : "leftward";
+}
+
+/** How close two x values must be for nodes to share a column, in pixels. */
+const SAME_COLUMN = 40;
+
+/** How far a line bows out per row it spans, and at most, in pixels. */
+const BOW_PER_ROW = 22;
+const BOW_MAX = 110;
+
+/**
+ * How far a line must bow to the right to pass the nodes between its ends
+ * in the same column, or 0 when nothing is in the way. The sign follows
+ * Cytoscape's control point distance, which is measured to the right of
+ * the line's direction.
+ */
+export function bow(from: Place, to: Place, all: Iterable<Place>): number {
+  if (Math.abs(to.x - from.x) > SAME_COLUMN) {
+    return 0;
+  }
+  const [low, high] = from.row < to.row ? [from.row, to.row] : [to.row, from.row];
+  const between = [...all].some((place) => place !== from && place !== to && Math.abs(place.x - from.x) <= SAME_COLUMN && place.row > low && place.row < high);
+  if (!between) {
+    return 0;
+  }
+  const size = Math.min(BOW_MAX, BOW_PER_ROW * (high - low));
+  return from.row < to.row ? -size : size;
+}
+
+/** Cytoscape elements: the lanes, every node in its place and one line per kind and pair of nodes shown. */
+function elements(map: Wiring, edges: WiringEdge[], filter: Filter, at: Map<string, Place>): unknown[] {
+  const used = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
+  const outdated = new Set(edges.filter((edge) => edge.status === "behind").map((edge) => edge.to));
+  const search = filter.search.trim();
+  const lanes = new Set([...at.values()].map((place) => place.lane));
+  const laneElements = (Object.keys(LANES) as Lane[])
+    .filter((lane) => lanes.has(lane))
+    .map((lane) => ({ group: "nodes", classes: "lane", data: { id: `lane:${lane}`, label: LANES[lane] } }));
+
+  // Nodes stay in place whatever the filters; one without a line shown fades.
+  const nodeElements = map.nodes.map((node) => {
+    const place = at.get(node.id)!;
+    const name = `${outdated.has(node.id) ? "! " : ""}${node.label}`;
+    const label = [...wrap(name), ...(node.planned ? ["(planned)"] : []), ...badge(map, node.id, filter.kinds)];
+    const [width, height] = boxSize(label);
+    const own = node.kind === "repo" || node.kind === "fork";
+    const idle = !used.has(node.id) && !(own && (!search || matches(node, search)));
+    const classes = [idle ? "idle" : "", search && matches(node, search) ? "match" : ""].join(" ").trim();
+    return {
+      group: "nodes",
+      classes,
+      data: { id: node.id, parent: `lane:${place.lane}`, label: label.join("\n"), width, height, kind: node.kind, planned: node.planned === true, outdated: outdated.has(node.id) },
+      position: { x: place.x, y: place.row * ROW },
+    };
+  });
+
+  // A self-loop (AnkiQuest-Agents' own AGENTS.md) is in the table only.
+  const edgeElements = lines(edges.filter((edge) => edge.from !== edge.to)).map((line, index) => {
+    const [from, to] = [at.get(line.from)!, at.get(line.to)!];
+    const bend = bow(from, to, at.values());
+    return {
+      group: "edges",
+      classes: [direction(from, to), bend ? "bow" : ""].join(" ").trim(),
+      data: { id: `e${index}`, source: line.from, target: line.to, kind: line.kind, status: line.status, mark: line.mark, bow: bend, indices: line.edges.map((edge) => map.edges.indexOf(edge)).join(",") },
+    };
+  });
+  return [...laneElements, ...nodeElements, ...edgeElements];
 }
 
 /** Builds the page from wiring.json. */
@@ -317,6 +779,8 @@ async function main(): Promise<void> {
   const map = (await (await fetch("wiring.json")).json()) as Wiring;
   const $ = <T extends HTMLElement>(selector: string): T => document.querySelector(selector) as T;
   const kinds = Object.keys(KIND_NAMES) as EdgeKind[];
+  const desktop = places(map);
+  const phone = stacked(desktop);
 
   // Summary and notes.
   const behind = map.edges.filter((edge) => edge.status === "behind").length;
@@ -324,14 +788,19 @@ async function main(): Promise<void> {
   $("#summary").innerHTML = `${map.nodes.length} nodes, ${map.edges.length} edges: <span class="status behind">! ${behind} out of date</span>, <span class="status unknown">${unknown} unknown</span>. Generated ${esc(map.generated.slice(0, 16).replace("T", " "))} UTC.`;
   $("#notes").innerHTML = map.notes.map((note) => `<li>${linked(note)}</li>`).join("");
 
-  // One checkbox per edge kind present, with its count.
+  // One checkbox per edge kind present, with its line and count; the fan-out kinds start off.
   const present = kinds.filter((kind) => map.edges.some((edge) => edge.kind === kind));
   $("#kinds").innerHTML = present
-    .map((kind) => `<label><input type="checkbox" value="${kind}" checked> ${esc(KIND_NAMES[kind])} <span class="muted">${map.edges.filter((edge) => edge.kind === kind).length}</span></label>`)
+    .map(
+      (kind) =>
+        `<label><input type="checkbox" value="${kind}"${DEFAULT_KINDS.has(kind) ? " checked" : ""}> ${swatch(kind)} ${esc(KIND_NAMES[kind])} <span class="muted">${map.edges.filter((edge) => edge.kind === kind).length}</span></label>`,
+    )
     .join("");
 
-  const cy = cytoscape({ container: $("#graph"), style: graphStyle(), minZoom: 0.2, maxZoom: 3 });
+  const graph = $("#graph");
+  const cy = cytoscape({ container: graph, style: graphStyle(), minZoom: 0.2, maxZoom: 3, boxSelectionEnabled: false, autoungrabify: true });
   const details = $("#details");
+  const empty = details.innerHTML;
 
   const filter = (): Filter => ({
     kinds: new Set([...document.querySelectorAll<HTMLInputElement>("#kinds input:checked")].map((input) => input.value as EdgeKind)),
@@ -339,43 +808,105 @@ async function main(): Promise<void> {
     search: $<HTMLInputElement>("#search").value,
   });
 
+  // Focus: the hovered or chosen node or edge, its neighbours and their lines stay; the rest fades.
+  let chosen: CyElement | undefined;
+  const focus = (target: CyElement | undefined): void => {
+    cy.elements().removeClass("faded");
+    if (!target) {
+      return;
+    }
+    const keep = target.isNode() ? target.closedNeighborhood() : target.union(target.connectedNodes());
+    cy.elements().not(keep).not("node.lane").addClass("faded");
+  };
+  const reset = (): void => {
+    chosen = undefined;
+    cy.elements().unselect();
+    focus(undefined);
+    details.innerHTML = empty;
+  };
+
+  // Fit the map: on a wide screen the box takes the map's shape; on a narrow one the map fills its width and pans.
+  const fit = (narrow: boolean): void => {
+    const box = cy.elements().boundingBox();
+    const width = graph.clientWidth;
+    if (narrow) {
+      graph.style.height = `${Math.round(innerHeight * NARROW_HEIGHT)}px`;
+      cy.resize();
+      const zoom = (width - 2 * PADDING) / box.w;
+      cy.zoom(zoom);
+      cy.pan({ x: PADDING - box.x1 * zoom, y: PADDING - box.y1 * zoom });
+      return;
+    }
+    const height = ((width - 2 * PADDING) * box.h) / box.w + 2 * PADDING;
+    graph.style.height = `${Math.round(Math.min(height, innerHeight * MAX_HEIGHT))}px`;
+    cy.resize();
+    cy.fit(undefined, PADDING);
+  };
+
   // Redraw the graph and the table for the current filters.
   const render = (): void => {
     const current = filter();
     const edges = visibleEdges(map, current);
+    const narrow = innerWidth < NARROW;
+    chosen = undefined;
     cy.elements().remove();
-    cy.add(elements(map, edges, current.search));
-    cy.layout({ name: "cose", randomize: false, animate: false, nodeRepulsion: 400000, idealEdgeLength: 120, edgeElasticity: 60, gravity: 0.4, nodeOverlap: 40, numIter: 2000, padding: 20, componentSpacing: 120 }).run();
-    cy.fit(20);
+    cy.add(elements(map, edges, current, narrow ? phone : desktop));
+    cy.layout({ name: "preset", fit: false }).run();
+    fit(narrow);
+    details.innerHTML = empty;
     $("#table").innerHTML = table(edges);
     $("#count").textContent = `${edges.length} of ${map.edges.length} edges`;
   };
 
+  cy.on("mouseover", "node, edge", (event) => focus(event.target));
+  cy.on("mouseout", "node, edge", () => focus(chosen));
   cy.on("tap", "node", (event) => {
+    chosen = event.target;
+    focus(chosen);
     details.innerHTML = nodeDetails(map, event.target.id());
   });
   cy.on("tap", "edge", (event) => {
+    chosen = event.target;
+    focus(chosen);
     const indices = String(event.target.data("indices")).split(",").map(Number);
     details.innerHTML = indices.map((index) => edgeDetails(map.edges[index])).join("");
   });
+  cy.on("tap", (event) => {
+    if (event.target === cy) {
+      reset();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      reset();
+    }
+  });
+
   for (const input of document.querySelectorAll("#controls input")) {
     input.addEventListener(input.getAttribute("type") === "search" ? "input" : "change", render);
   }
-  $("#all").addEventListener("click", () => {
+  const setAll = (value: (kind: EdgeKind) => boolean): void => {
     for (const input of document.querySelectorAll<HTMLInputElement>("#kinds input")) {
-      input.checked = true;
+      input.checked = value(input.value as EdgeKind);
     }
     render();
-  });
-  $("#none").addEventListener("click", () => {
-    for (const input of document.querySelectorAll<HTMLInputElement>("#kinds input")) {
-      input.checked = false;
-    }
-    render();
-  });
+  };
+  $("#all").addEventListener("click", () => setAll(() => true));
+  $("#main").addEventListener("click", () => setAll((kind) => DEFAULT_KINDS.has(kind)));
+  $("#none").addEventListener("click", () => setAll(() => false));
 
-  // Colours follow the system's light or dark mode.
+  // Colours follow the system's light or dark mode; the layout follows the window's width.
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => cy.style(graphStyle()));
+  let wasNarrow = innerWidth < NARROW;
+  addEventListener("resize", () => {
+    const narrow = innerWidth < NARROW;
+    if (narrow !== wasNarrow) {
+      wasNarrow = narrow;
+      render();
+      return;
+    }
+    fit(narrow);
+  });
   render();
 }
 

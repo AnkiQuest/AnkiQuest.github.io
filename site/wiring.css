@@ -1,24 +1,58 @@
 /* The wiring page, on top of style.css's tokens. Status colours keep
    contrast in both modes; out of date also gets a "!" mark and a thicker
-   line, so colour is never the only sign. */
+   line, so colour is never the only sign. Each edge kind has a colour
+   (--kind-<kind>) and, in wiring.ts, a line style. */
 :root {
   --line-strong: #a8a297;
+  --lane: #f4f1ea;
   --status-current: #15803d;
   --status-behind: #c2410c;
   --status-unknown: #8a857c;
   --status-none: #b8b2a7;
   --status-planned: #7c3aed;
+  --kind-upstream: #2563eb;
+  --kind-watched: #2563eb;
+  --kind-submodule: #7c3aed;
+  --kind-cargo: #a16207;
+  --kind-maven: #0f766e;
+  --kind-publishes: #0f766e;
+  --kind-data: #15803d;
+  --kind-runtime: #be185d;
+  --kind-flake: #0e7490;
+  --kind-workflow: #78716c;
+  --kind-checkout: #15803d;
+  --kind-vendored: #64748b;
+  --kind-agents: #4f46e5;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --line-strong: #6b665e;
+    --lane: #252421;
     --status-current: #4ade80;
     --status-behind: #fb923c;
     --status-unknown: #a39d93;
     --status-none: #57534c;
     --status-planned: #c4b5fd;
+    --kind-upstream: #60a5fa;
+    --kind-watched: #60a5fa;
+    --kind-submodule: #a78bfa;
+    --kind-cargo: #facc15;
+    --kind-maven: #2dd4bf;
+    --kind-publishes: #2dd4bf;
+    --kind-data: #4ade80;
+    --kind-runtime: #f472b6;
+    --kind-flake: #22d3ee;
+    --kind-workflow: #a8a29e;
+    --kind-checkout: #4ade80;
+    --kind-vendored: #94a3b8;
+    --kind-agents: #818cf8;
   }
+}
+
+/* The map needs the width: wider than the other pages. */
+main.wiring {
+  max-width: 1600px;
 }
 
 .wiring > p {
@@ -79,6 +113,7 @@
   gap: 12px;
 }
 
+/* wiring.ts sets the height from the map's shape. */
 #graph {
   height: 70vh;
   min-height: 420px;
@@ -119,7 +154,7 @@
   margin: 0;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1500px) {
   .split {
     grid-template-columns: 1fr 340px;
   }
@@ -166,27 +201,6 @@
   margin-right: 4px;
 }
 
-.swatch.line {
-  width: 28px;
-  border-top: 3px solid var(--status-none);
-}
-
-.swatch.line.current {
-  border-top-color: var(--status-current);
-}
-
-.swatch.line.behind {
-  border-top: 5px solid var(--status-behind);
-}
-
-.swatch.line.unknown {
-  border-top: 3px dashed var(--status-unknown);
-}
-
-.swatch.line.planned {
-  border-top: 3px dotted var(--status-planned);
-}
-
 .swatch.box,
 .swatch.oval,
 .swatch.hex {
@@ -201,16 +215,30 @@
 }
 
 .swatch.box.fork {
-  border: 3px solid var(--accent);
+  border: 4px double var(--accent);
+}
+
+/* An edge kind's line: its colour and style. */
+.swatch.kind {
+  width: 26px;
+  border-top: 3px solid var(--kind);
+}
+
+.swatch.kind.dashed {
+  border-top-style: dashed;
+}
+
+.swatch.kind.dotted {
+  border-top-style: dotted;
 }
 
 .swatch.oval {
-  border-radius: 50%;
+  border-radius: 7px;
   background: var(--tile);
 }
 
 .swatch.hex {
-  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  clip-path: polygon(20% 0, 80% 0, 100% 30%, 100% 70%, 80% 100%, 20% 100%, 0 70%, 0 30%);
   background: var(--line-strong);
 }
 

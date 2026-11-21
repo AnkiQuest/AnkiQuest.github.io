@@ -1,16 +1,16 @@
 # AnkiQuest companions
 
-The gallery at <https://ankiquest.github.io>: every picture of every companion, built from the masters in [AnkiQuest-Server](https://github.com/AnkiQuest/AnkiQuest-Server) `static/`. Each companion's pictures are grouped into poses, moments, icons, pack art and older versions; `RULES` in `src/art.ts` files every picture that is not a pose master, and the build fails on a picture it does not file.
+The gallery at <https://ankiquest.github.io>: the art matrix of every companion by every item of AnkiQuest-Server's pose list (`tests/fixtures/companion_poses.json`), each cell drawn, showing its fallback, or missing; a page per companion with what it is missing, why and the issue tracking it; and the archive of replaced pictures, apart from current art. Every picture shows its licence.
 
-The masters come from the AnkiQuest-Server commit the `server` submodule
-pins; Dependabot opens a pull request when AnkiQuest-Server moves.
+The pages come from AnkiQuest-Server's `xtask art-coverage --json` (schema 1, `docs/branding/art-coverage.md` there), run in the AnkiQuest-Server commit the `server` submodule pins. The build copies each picture, licence and README the JSON names to `files/<path>` and makes the WebP previews; nothing here walks the masters' folders, so the paths follow the masters when they move. Dependabot opens a pull request when AnkiQuest-Server moves.
 
 ```sh
 git submodule update --init
-node src/build.ts server _site
+node src/build.ts server _site                 # runs cargo in server/
+node src/build.ts server _site coverage.json   # or reads the JSON from a file
 ```
 
-Run it in the dev shell (`nix develop`), which has Node 22, `cwebp` and `webpmux`. The `pages` workflow builds and deploys on every push to `master`.
+Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`; the first form also needs `cargo`. `npm test` checks how the JSON becomes pages. The `pages` workflow builds and deploys on every push to `master`.
 
 ## Wiring map
 
@@ -24,4 +24,4 @@ The `wiring` workflow runs it daily and opens a pull request when the map change
 
 ## Licence
 
-AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep the licence of their masters in AnkiQuest-Server; the gallery shows the credit and licence from each folder's `LICENSE` or `README.md` there.
+AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep the licence of their masters in AnkiQuest-Server; the gallery shows the licence and credit art-coverage gives for each companion and archive folder.

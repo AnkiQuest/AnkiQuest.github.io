@@ -1,6 +1,7 @@
 version: 2
 updates:
-  # The server submodule: a bump brings new pose masters into the gallery.
+  # The art and server submodules: a bump brings new pictures or fixtures
+  # into the gallery.
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:

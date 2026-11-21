@@ -1,10 +1,11 @@
-// Builds the gallery from an AnkiQuest-Server checkout:
-//   node src/build.ts <server-checkout> <out-dir>
+// Builds the gallery from an AnkiQuest-Server checkout (fixtures) and an
+// AnkiQuest-Art checkout (pictures):
+//   node src/build.ts <server-checkout> <art-checkout> <out-dir>
 // Writes index.html and the stylesheet, copies each pose's master byte for
-// byte under art/<companion>/ and every other picture under files/, as
-// static/ lays them out, and makes a small WebP preview next to each for
-// the grid; an animation gets an animated WebP. Previews need cwebp and
-// webpmux (Debian/Ubuntu package webp).
+// byte under art/<companion>/ and every other picture under files/, as Art
+// lays them out, and makes a small WebP preview next to each for the grid;
+// an animation gets an animated WebP. Previews need cwebp and webpmux
+// (Debian/Ubuntu package webp).
 
 import { execFileSync } from "node:child_process";
 import {
@@ -13,7 +14,6 @@ import {
   mkdirSync,
   mkdtempSync,
   openSync,
-  readdirSync,
   readFileSync,
   readSync,
   rmSync,
@@ -24,18 +24,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  companions,
-  GROUPS,
-  PACKS,
-  type Companion,
-  type Group,
-  type Pack,
-  type Picture,
-  type Place,
-  type Pose,
-  type Sequence,
-} from "./art.ts";
+import { companions, words, type Companion, type Origin, type Picture, type Pose, type Sequence } from "./art.ts";
 
 /** The files under site/ copied next to index.html. */
 const ASSETS = ["style.css", "wiring.html", "wiring.css"];
@@ -64,28 +53,32 @@ const FCTL_DELAY = 20;
 /** An APNG delay denominator of 0 means hundredths (APNG spec). */
 const DEFAULT_DENOMINATOR = 100;
 
-/** Folder on the site for pictures that are not poses, laid out as static/. */
+/** Folder on the site for pictures that are not poses, laid out as Art. */
 const FILES = "files";
 
 /** Width of the animated previews, in pixels. */
 const ANIMATION_WIDTH = 240;
 
-/** Each group's heading. */
-const GROUP_TITLES: Record<Group, string> = {
-  pose: "Poses",
-  moment: "Moments",
-  icon: "Icons",
-  pack: "Pack art",
-  older: "Older versions, not in use",
+/** Shigeyuki's pack folders, in page order, and their headings; "" is the pack's top level. */
+const PACK_FOLDERS: [string, string][] = [
+  ["illust/", "Illustrations"],
+  ["sticker/", "Stickers"],
+  ["emoji/", "Emoji"],
+  ["sprite/", "Animations"],
+  ["", "App icon"],
+];
+
+/** What each stage says under the companion's name. */
+const STAGE_TITLES: Record<Companion["stage"], string> = {
+  live: "Live: players can earn this companion.",
+  planned: "Future companion: not in the apps yet.",
+  shared: "Pictures of more than one companion.",
 };
 
-/** Each kind of pack art's heading. */
-const PACK_TITLES: Record<Pack, string> = {
-  illustration: "Illustrations",
-  sticker: "Stickers",
-  emoji: "Emoji",
-  sprite: "Animations",
-  chibi: "Chibi",
+/** What "art we made" means for each origin, under its heading. */
+const MADE_BY: Record<Exclude<Origin, "shigeyuki">, string> = {
+  derivative: "Derivatives of Shigeyuki's Anki-tan made for AnkiQuest, CC BY-SA 4.0.",
+  ankiquest: "AnkiQuest's own art, AGPL-3.0-or-later.",
 };
 
 /** Escapes text for HTML content and attribute values. */
@@ -104,11 +97,6 @@ export function credit(licence: string): string {
   return linked(`${who} ${terms}`.replace(/\s+/g, " ").trim());
 }
 
-/** A pose name as words: streak_hot becomes "streak hot". */
-function words(name: string): string {
-  return name.replaceAll("_", " ");
-}
-
 /** A PNG's width and height from its header, or undefined. */
 export function pngSize(path: string): [number, number] | undefined {
   const head = Buffer.alloc(PNG_SIZE_OFFSET + 8);
@@ -124,7 +112,7 @@ export function pngSize(path: string): [number, number] | undefined {
   return [head.readUInt32BE(PNG_SIZE_OFFSET), head.readUInt32BE(PNG_SIZE_OFFSET + 4)];
 }
 
-/** One master on the site: its URL, and its preview's URL and size. */
+/** One picture on the site: its URL, and its preview's URL and size. */
 export interface Art {
   master: string;
   preview: string;
@@ -149,33 +137,6 @@ function previewArgs(master: string, out: string, width: number): string[] {
   return [...args, master, "-o", out];
 }
 
-/** Copies each drawn master and makes its preview. */
-function copyArt(out: string, list: Companion[]): Map<string, Art> {
-  const art = new Map<string, Art>();
-  for (const companion of list) {
-    for (const pose of companion.poses) {
-      if (pose.status.state !== "drawn") {
-        continue;
-      }
-      const file = pose.status.file;
-      const size = pngSize(file);
-      if (size === undefined) {
-        throw new Error(`${file} is not a PNG`);
-      }
-
-      // The master unchanged, and the preview next to it.
-      const base = `art/${companion.id}/${pose.name}`;
-      mkdirSync(join(out, dirname(base)), { recursive: true });
-      copyFileSync(file, join(out, `${base}.png`));
-      webp("cwebp", previewArgs(file, join(out, `${base}.webp`), size[0]));
-
-      const [width, height] = previewSize(...size);
-      art.set(file, { master: `${base}.png`, preview: `${base}.webp`, width, height });
-    }
-  }
-  return art;
-}
-
 /** An animation on the site: its animated preview, frames and frame delay. */
 export interface Clip {
   art: Art;
@@ -183,7 +144,7 @@ export interface Clip {
   delay: number;
 }
 
-/** What the page shows: previews by master path, animations by frame folder. */
+/** What the page shows: previews by picture path, animations by name. */
 export interface Shown {
   art: Map<string, Art>;
   clips: Map<string, Clip>;
@@ -232,201 +193,216 @@ function animate(frames: string[], out: string, delay: number): void {
   }
 }
 
-/** The site path of a picture under static/. */
+/** The site path of an Art file. */
 function site(file: string): string {
   return `${FILES}/${file}`;
 }
 
-/** Copies `file` (relative to static/) to the site unchanged. */
-function copyMaster(server: string, out: string, file: string): void {
-  const target = join(out, site(file));
-  mkdirSync(dirname(target), { recursive: true });
-  copyFileSync(join(server, "static", file), target);
+/** Copies `path` to `target` under `out` and makes its preview next to it. */
+function publish(out: string, path: string, target: string): Art {
+  const size = pngSize(path);
+  if (size === undefined) {
+    throw new Error(`${path} is not a PNG`);
+  }
+  mkdirSync(join(out, dirname(target)), { recursive: true });
+  copyFileSync(path, join(out, target));
+  const preview = target.replace(/\.png$/, ".webp");
+  webp("cwebp", previewArgs(path, join(out, preview), size[0]));
+  const [width, height] = previewSize(...size);
+  return { master: target, preview, width, height };
 }
 
-/** Copies each picture that is not a pose and makes its preview; animations get one preview each. */
-function copyFiles(server: string, out: string, list: Companion[], art: Map<string, Art>): Map<string, Clip> {
-  const clips = new Map<string, Clip>();
+/** Copies every picture the page shows, with previews; each file once. */
+function copyAll(out: string, list: Companion[]): Shown {
+  const art = new Map<string, Art>();
+
+  // Pose masters at art/<companion>/<pose>.png, the URLs the gallery always had.
   for (const companion of list) {
-    // Animations: frames and animated PNG copied, one animated preview.
-    for (const sequence of companion.sequences) {
-      const folder = join(server, "static", sequence.frames);
-      const frames = readdirSync(folder).filter((name) => name.endsWith(".png")).sort();
-      const delay = apngDelay(join(server, "static", sequence.animation));
-      for (const frame of frames) {
-        copyMaster(server, out, `${sequence.frames}/${frame}`);
+    for (const pose of companion.poses) {
+      if (pose.status.state === "drawn" && !art.has(pose.status.file)) {
+        const path = companion.used.concat(companion.original).find((p) => p.file === pose.status.file)?.path;
+        if (path === undefined) {
+          continue;
+        }
+        art.set(pose.status.file, publish(out, path, `art/${companion.id}/${pose.name}.png`));
       }
-      copyMaster(server, out, sequence.animation);
-
-      const size = pngSize(join(folder, frames[0]));
-      if (size === undefined) {
-        throw new Error(`${folder} has no PNG frames`);
-      }
-      const preview = `${site(sequence.frames)}.webp`;
-      animate(frames.map((frame) => join(folder, frame)), join(out, preview), delay);
-      const height = Math.round((size[1] * ANIMATION_WIDTH) / size[0]);
-      clips.set(sequence.frames, {
-        art: { master: site(sequence.animation), preview, width: ANIMATION_WIDTH, height },
-        frames: frames.map((frame) => site(`${sequence.frames}/${frame}`)),
-        delay,
-      });
-    }
-
-    // Every other picture that is not a pose master and not in an animation.
-    for (const picture of companion.pictures) {
-      if (picture.place.group === "pose" || sequenceOf(companion, picture) !== undefined) {
-        continue;
-      }
-      const size = pngSize(picture.path);
-      if (size === undefined) {
-        throw new Error(`${picture.path} is not a PNG`);
-      }
-      copyMaster(server, out, picture.file);
-      const preview = site(picture.file.replace(/\.png$/, ".webp"));
-      webp("cwebp", previewArgs(picture.path, join(out, preview), size[0]));
-      const [width, height] = previewSize(...size);
-      art.set(picture.path, { master: site(picture.file), preview, width, height });
     }
   }
-  return clips;
+
+  // Every other picture under files/, as Art lays it out.
+  const clips = new Map<string, Clip>();
+  for (const companion of list) {
+    for (const sequence of companion.sequences) {
+      clips.set(sequence.name, clip(out, sequence));
+    }
+    for (const picture of [...companion.original, ...companion.used, ...companion.retired]) {
+      if (!art.has(picture.file) && sequenceOf(companion, picture) === undefined) {
+        art.set(picture.file, publish(out, picture.path, site(picture.file)));
+      }
+    }
+  }
+  return { art, clips };
+}
+
+/** Copies an animation's frames and animated PNG, and makes one animated preview. */
+function clip(out: string, sequence: Sequence): Clip {
+  const delay = apngDelay(sequence.animation.path);
+  for (const picture of [...sequence.frames, sequence.animation]) {
+    const target = join(out, site(picture.file));
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(picture.path, target);
+  }
+
+  const size = pngSize(sequence.frames[0].path);
+  if (size === undefined) {
+    throw new Error(`${sequence.frames[0].path} is not a PNG`);
+  }
+  const preview = `${FILES}/${sequence.name}.webp`;
+  animate(sequence.frames.map((frame) => frame.path), join(out, preview), delay);
+  const height = Math.round((size[1] * ANIMATION_WIDTH) / size[0]);
+  return {
+    art: { master: site(sequence.animation.file), preview, width: ANIMATION_WIDTH, height },
+    frames: sequence.frames.map((frame) => site(frame.file)),
+    delay,
+  };
 }
 
 /** The animation `picture` is a frame or the animated PNG of, if any. */
 function sequenceOf(companion: Companion, picture: Picture): Sequence | undefined {
   return companion.sequences.find(
-    (sequence) => picture.file === sequence.animation || picture.file.startsWith(`${sequence.frames}/`),
+    (sequence) => picture.file === sequence.animation.file || sequence.frames.some((frame) => frame.file === picture.file),
   );
 }
 
-/** One drawn pose: its preview, linking to the master, and its name. */
-function card(companion: Companion, pose: Pose, art: Map<string, Art>): string {
-  if (pose.status.state !== "drawn") {
-    return "";
-  }
-  const shown = art.get(pose.status.file);
-  if (shown === undefined) {
-    throw new Error(`no copy of ${pose.status.file}`);
-  }
-  const label = words(pose.name);
-  const img = `<img src="${esc(shown.preview)}" alt="${esc(`${companion.name}, ${label}`)}" width="${shown.width}" height="${shown.height}" loading="lazy" decoding="async">`;
-  return `<li><a href="${esc(shown.master)}">${img}</a><span>${esc(label)}</span></li>`;
+/** A caption: the name, what it is, and its author and licence. */
+function captionHtml(name: string, note: string, picture: Picture, extra = ""): string {
+  const text = note ? `<small>${note}</small>` : "";
+  const who = `<small class="licence">${esc(picture.author)} · ${esc(picture.licence)}</small>`;
+  return `<div class="caption"><code>${esc(name)}</code>${text}${extra}${who}</div>`;
 }
 
-/** What a picture's caption says besides its file name. */
-export function caption(place: Place): string {
-  switch (place.group) {
-    case "pose":
-      return place.poses.map(words).join(", ");
-    case "moment":
-    case "icon":
-      return place.note;
-    case "older": {
-      const replaced =
-        place.copy === "same" ? `Earlier name of ${place.replacedBy}, same picture.` : `Replaced by ${place.replacedBy}.`;
-      return place.note ? `${replaced} ${place.note}.` : replaced;
-    }
-    case "pack":
-      return place.note ?? "";
-  }
-}
-
-/** A caption: the file name, what it is, and its licence. */
-function captionHtml(name: string, text: string, licence: string, extra = ""): string {
-  const note = text ? `<small>${text}</small>` : "";
-  return `<div class="caption"><code>${esc(name)}</code>${note}${extra}<small class="licence">${esc(licence)}</small></div>`;
-}
-
-/** One picture that is not a pose: its preview, linking to the master, and its caption. */
-function fileCard(companion: Companion, picture: Picture, shown: Shown): string {
-  const art = shown.art.get(picture.path);
+/** One picture: its preview, linking to the file, and its caption. */
+export function cardHtml(companion: Companion, picture: Picture, shown: Shown): string {
+  const art = shown.art.get(picture.file);
   if (art === undefined) {
-    throw new Error(`no copy of ${picture.path}`);
+    throw new Error(`no copy of ${picture.file}`);
   }
-  const img = `<img src="${esc(art.preview)}" alt="${esc(`${companion.name}, ${picture.name}`)}" width="${art.width}" height="${art.height}" loading="lazy" decoding="async">`;
-  const text = esc(caption(picture.place));
-  return `<li><a href="${esc(art.master)}">${img}</a>${captionHtml(picture.name, text, picture.credit.licence)}</li>`;
+  const alt = picture.poses.length > 0 ? picture.poses.map(words).join(", ") : picture.name;
+  const img = `<img src="${esc(art.preview)}" alt="${esc(`${companion.name}, ${alt}`)}" width="${art.width}" height="${art.height}" loading="lazy" decoding="async">`;
+  return `<li><a href="${esc(art.master)}">${img}</a>${captionHtml(picture.name, esc(picture.note), picture)}</li>`;
 }
 
 /** One animation: its animated preview, linking to the animated PNG, and its frames. */
-function clipCard(companion: Companion, sequence: Sequence, licence: string, shown: Shown): string {
-  const clip = shown.clips.get(sequence.frames);
+function clipCard(companion: Companion, sequence: Sequence, shown: Shown): string {
+  const clip = shown.clips.get(sequence.name);
   if (clip === undefined) {
-    throw new Error(`no animation of ${sequence.frames}`);
+    throw new Error(`no animation of ${sequence.name}`);
   }
   const { art, frames, delay } = clip;
-  const name = sequence.frames.slice(sequence.frames.indexOf("/") + 1);
+  const used = sequence.frames.filter((frame) => frame.note).map((frame) => `${basename(frame.name)}: ${frame.note}`);
   const img = `<img src="${esc(art.preview)}" alt="${esc(`${companion.name}, ${sequence.name} animation`)}" width="${art.width}" height="${art.height}" loading="lazy" decoding="async">`;
-  const text = `${frames.length} frames, ${delay} ms each; <a href="${esc(art.master)}">animated PNG</a>`;
-  const list = frames.map((frame) => `<li><a href="${esc(frame)}">${esc(basename(frame))}</a></li>`).join("");
+  const note = [`${frames.length} frames, ${delay} ms each; <a href="${esc(art.master)}">animated PNG</a>`, ...used.map(esc)].join(". ");
+  const list = sequence.frames.map((frame, i) => `<li><a href="${esc(frames[i])}">${esc(basename(frame.name))}</a></li>`).join("");
   const details = `<details><summary>Frames</summary><ol class="frames">${list}</ol></details>`;
-  return `<li><a href="${esc(art.master)}">${img}</a>${captionHtml(`${name}/`, text, licence, details)}</li>`;
+  const folder = sequence.frames[0].name.slice(0, sequence.frames[0].name.lastIndexOf("/") + 1);
+  return `<li><a href="${esc(art.master)}">${img}</a>${captionHtml(folder, note, sequence.animation, details)}</li>`;
 }
 
-/** Pictures as grids, one per credit, each under the credit it shows. */
-function credited(companion: Companion, pictures: Picture[], shown: Shown): string {
-  // Cards in file order, each animation once, grouped by credit source.
-  const blocks = new Map<string, { text: string; cards: string[] }>();
-  const done = new Set<string>();
-  for (const picture of pictures) {
-    const block = blocks.get(picture.credit.source) ?? { text: picture.credit.text, cards: [] };
-    blocks.set(picture.credit.source, block);
+/** A grid of cards, or nothing. */
+function grid(cards: string[]): string {
+  return cards.length > 0 ? `<ul class="grid">\n${cards.join("\n")}\n</ul>` : "";
+}
 
-    const sequence = sequenceOf(companion, picture);
-    if (sequence === undefined) {
-      block.cards.push(fileCard(companion, picture, shown));
-    } else if (!done.has(sequence.frames)) {
-      done.add(sequence.frames);
-      block.cards.push(clipCard(companion, sequence, picture.credit.licence, shown));
+/** What a pose shows, for the pose table. */
+export function shows(pose: Pose): string {
+  switch (pose.status.state) {
+    case "drawn": {
+      const by = pose.origin === "shigeyuki" ? "Shigeyuki's" : "ours";
+      return `<code>${esc(pose.status.file)}</code> (${by})`;
+    }
+    case "fallback":
+      return `Falls back to ${esc(words(pose.status.pose))}`;
+    case "missing": {
+      const issue = pose.status.issue ? ` (<a href="${esc(pose.status.issue)}">to draw</a>)` : "";
+      return `Missing${issue}`;
     }
   }
-
-  return [...blocks]
-    .map(([source, block]) => {
-      const from = source ? `From <code>static/${esc(source)}</code>: ` : "";
-      return `<p class="credit">${from}${linked(block.text)}</p>
-<ul class="grid">
-${block.cards.join("\n")}
-</ul>`;
-    })
-    .join("\n");
 }
 
-/** One group of a companion's pictures under its heading, or nothing. */
-function group(companion: Companion, kind: Group, shown: Shown): string {
-  // Poses: the pose list's grid, as the gallery always showed it.
-  if (kind === "pose") {
-    const cards = companion.poses
-      .map((pose) => card(companion, pose, shown.art))
-      .filter(Boolean)
-      .join("\n");
-    return cards ? `<h3>${GROUP_TITLES.pose}</h3>\n<ul class="grid">\n${cards}\n</ul>` : "";
-  }
-
-  const pictures = companion.pictures.filter((picture) => picture.place.group === kind);
-  if (pictures.length === 0) {
+/** The pose table: every pose in the fixture and what the companion shows for it. */
+function poseTable(companion: Companion): string {
+  if (companion.poses.length === 0) {
     return "";
   }
-  if (kind !== "pack") {
-    return `<h3>${GROUP_TITLES[kind]}</h3>\n${credited(companion, pictures, shown)}`;
-  }
-
-  // Pack art, one heading per kind.
-  const parts = PACKS.map((pack) => {
-    const ofPack = pictures.filter((picture) => picture.place.group === "pack" && picture.place.pack === pack);
-    return ofPack.length > 0 ? `<h4>${PACK_TITLES[pack]}</h4>\n${credited(companion, ofPack, shown)}` : "";
+  const rows = companion.poses.map((pose) => {
+    const moods = pose.moods.map(words).join(", ");
+    return `<tr><td>${esc(words(pose.name))}</td><td>${pose.kind}</td><td>${shows(pose)}</td><td>${esc(moods)}</td></tr>`;
   });
-  return `<h3>${GROUP_TITLES.pack}</h3>\n${parts.filter(Boolean).join("\n")}`;
+  return `<h3>Poses</h3>
+<table class="poses">
+<thead><tr><th>Pose</th><th>Kind</th><th>Shows</th><th>Moods</th></tr></thead>
+<tbody>
+${rows.join("\n")}
+</tbody>
+</table>`;
 }
 
-/** One companion: its name, the credit its licence asks for, and each group of pictures. */
+/** Shigeyuki's originals, by pack folder, with his animations as one card each. */
+function originals(companion: Companion, shown: Shown): string {
+  if (companion.original.length === 0) {
+    return "";
+  }
+  const parts = PACK_FOLDERS.map(([prefix, title]) => {
+    const inFolder = companion.original.filter((picture) =>
+      prefix ? picture.name.startsWith(prefix) : !picture.name.includes("/"),
+    );
+    const done = new Set<string>();
+    const cards: string[] = [];
+    for (const picture of inFolder) {
+      const sequence = sequenceOf(companion, picture);
+      if (sequence === undefined) {
+        cards.push(cardHtml(companion, picture, shown));
+      } else if (!done.has(sequence.name)) {
+        done.add(sequence.name);
+        cards.push(clipCard(companion, sequence, shown));
+      }
+    }
+    return cards.length > 0 ? `<h4>${title}</h4>\n${grid(cards)}` : "";
+  });
+
+  const whole = companion.sequences.length > 0;
+  const intro = whole
+    ? "Shigeyuki's Anki-tan asset pack v1.0 as he made it (https://shigeyukey.github.io/shige-addons-wiki/Anki-tan.html). Pictures the apps use say what for."
+    : "Pictures from Shigeyuki's Anki-tan asset pack v1.0 that this companion uses.";
+  return `<h3>Shigeyuki's original art</h3>
+<p class="credit">${linked(intro)}</p>
+${parts.filter(Boolean).join("\n")}`;
+}
+
+/** Art we made: what the apps use, and what is retired. */
+function ours(companion: Companion, shown: Shown): string {
+  const all = [...companion.used, ...companion.retired];
+  if (all.length === 0) {
+    return "";
+  }
+  const origins = [...new Set(all.map((picture) => picture.origin))].filter((o) => o !== "shigeyuki") as (keyof typeof MADE_BY)[];
+  const intro = origins.map((origin) => MADE_BY[origin]).join(" ");
+  const used = grid(companion.used.map((picture) => cardHtml(companion, picture, shown)));
+  const retired = grid(companion.retired.map((picture) => cardHtml(companion, picture, shown)));
+  return `<h3>Art we made</h3>
+<p class="credit">${esc(intro)}</p>
+${used ? `<h4>In use</h4>\n${used}` : ""}
+${retired ? `<h4>Retired</h4>\n${retired}` : ""}`.replace(/\n+$/, "");
+}
+
+/** One companion: name, stage, credit, poses, Shigeyuki's originals and our art. */
 function section(companion: Companion, shown: Shown): string {
   const licence = companion.licence ? `<p class="credit">${credit(companion.licence)}</p>\n` : "";
-  const groups = GROUPS.map((kind) => group(companion, kind, shown))
-    .filter(Boolean)
-    .join("\n");
+  const parts = [poseTable(companion), originals(companion, shown), ours(companion, shown)].filter(Boolean).join("\n");
   return `<section id="${esc(companion.id)}">
 <h2>${esc(companion.name)}</h2>
-${licence}${groups}
+<p class="stage">${STAGE_TITLES[companion.stage]}</p>
+${licence}${parts}
 </section>`;
 }
 
@@ -440,13 +416,13 @@ export function page(list: Companion[], shown: Shown): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>AnkiQuest companions</title>
-<meta name="description" content="Every AnkiQuest companion: poses, moments, icons, pack art and older versions.">
+<meta name="description" content="Every AnkiQuest companion: Shigeyuki's original Anki-tan art, and the art AnkiQuest made, in use and retired.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
 <h1><a href="https://ankiquest.org">AnkiQuest</a> companions</h1>
-<p><a href="wiring.html">How the AnkiQuest repositories are wired together</a></p>
+<p>Pictures from <a href="https://github.com/AnkiQuest/AnkiQuest-Art">AnkiQuest-Art</a>. <a href="wiring.html">How the AnkiQuest repositories are wired together</a></p>
 <nav>${toc}</nav>
 ${list.map((c) => section(c, shown)).join("\n")}
 </main>
@@ -456,41 +432,38 @@ ${list.map((c) => section(c, shown)).join("\n")}
 }
 
 /** Builds the site into `out`, replacing what was there. */
-export function build(server: string, out: string): void {
-  const list = companions(server);
+export function build(server: string, art: string, out: string): void {
+  const list = companions(server, art);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
-  const art = copyArt(out, list);
-  const clips = copyFiles(server, out, list, art);
+  const shown = copyAll(out, list);
 
   const site = join(dirname(fileURLToPath(import.meta.url)), "..", "site");
   for (const asset of ASSETS) {
     copyFileSync(join(site, asset), join(out, asset));
   }
-  writeFileSync(join(out, "index.html"), page(list, { art, clips }));
+  writeFileSync(join(out, "index.html"), page(list, shown));
 
   // The wiring page: its script without types, and the committed map.
   const script = readFileSync(join(site, WIRING_SCRIPT), "utf8");
   writeFileSync(join(out, WIRING_SCRIPT.replace(/\.ts$/, ".js")), stripTypeScriptTypes(script));
   copyFileSync(join(site, "..", WIRING_DATA), join(out, WIRING_DATA));
 
-  // Pictures per companion and group, so a run shows what it filed where.
+  // Pictures per companion and part, so a run shows what it filed where.
   for (const companion of list) {
-    const counts = GROUPS.map((kind) => {
-      const count = companion.pictures.filter((picture) => picture.place.group === kind).length;
-      return `${kind} ${count}`;
-    });
-    console.log(`${companion.id}: ${counts.join(", ")}`);
+    console.log(
+      `${companion.id}: original ${companion.original.length}, used ${companion.used.length}, retired ${companion.retired.length}`,
+    );
   }
-  console.log(`${list.length} sections, ${art.size} previews, ${clips.size} animations, into ${out}`);
+  console.log(`${list.length} sections, ${shown.art.size} previews, ${shown.clips.size} animations, into ${out}`);
 }
 
 // Run when called as a script, not when imported by the tests.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [server, out] = process.argv.slice(2);
-  if (!server || !out) {
-    console.error("usage: node src/build.ts <server-checkout> <out-dir>");
+  const [server, art, out] = process.argv.slice(2);
+  if (!server || !art || !out) {
+    console.error("usage: node src/build.ts <server-checkout> <art-checkout> <out-dir>");
     process.exit(2);
   }
-  build(server, out);
+  build(server, art, out);
 }

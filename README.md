@@ -1,13 +1,18 @@
 # AnkiQuest companions
 
-The gallery at <https://ankiquest.github.io>: every picture of every companion, built from the masters in [AnkiQuest-Server](https://github.com/AnkiQuest/AnkiQuest-Server) `static/`. Each companion's pictures are grouped into poses, moments, icons, pack art and older versions; `RULES` in `src/art.ts` files every picture that is not a pose master, and the build fails on a picture it does not file.
+The gallery at <https://ankiquest.github.io>: every picture of every companion, from [AnkiQuest-Art](https://github.com/AnkiQuest/AnkiQuest-Art). Each companion's section has:
 
-The masters come from the AnkiQuest-Server commit the `server` submodule
-pins; Dependabot opens a pull request when AnkiQuest-Server moves.
+- a table of the poses in AnkiQuest-Server's `tests/fixtures/companion_poses.json` and what the companion shows for each: its master, a fallback, or missing;
+- Shigeyuki's original art: his Anki-tan asset pack as he made it, under Anki-tan, with the pictures the apps use marked; under Anki-tan chibi, the pack pictures she uses;
+- art we made: derivatives of Shigeyuki's Anki-tan (CC BY-SA 4.0) and AnkiQuest's own companions (AGPL-3.0-or-later), split into what the apps use (Art's masters) and what is retired (Art's archive).
+
+Every card shows the picture's author and licence. `src/art.ts` reads them from Art's `manifest.json` (`origin`, `author`, `licence`, `pack`, `missing`, `archive`); a picture in Art the manifest does not list, or a picture with no entry in `NOTES`, fails the build.
+
+The pictures come from the AnkiQuest-Art commit the `art` submodule pins, and the pose list, unlocks and moods from the AnkiQuest-Server commit the `server` submodule pins; Dependabot opens a pull request when either moves.
 
 ```sh
 git submodule update --init
-node src/build.ts server _site
+node src/build.ts server art _site
 ```
 
 Run it in the dev shell (`nix develop`), which has Node 22, `cwebp` and `webpmux`. The `pages` workflow builds and deploys on every push to `master`.
@@ -26,4 +31,4 @@ The page lays the map out by hand: `LAYOUT` in `site/wiring.ts` places every nod
 
 ## Licence
 
-AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep the licence of their masters in AnkiQuest-Server; the gallery shows the credit and licence from each folder's `LICENSE` or `README.md` there.
+AGPL-3.0-or-later ([LICENSE](LICENSE)). The pictures keep their licence in AnkiQuest-Art; the gallery shows each picture's author and licence from its manifest, and the credit from each companion's `LICENSE`.

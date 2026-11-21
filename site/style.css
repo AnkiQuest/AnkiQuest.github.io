@@ -157,3 +157,30 @@ h4 {
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   }
 }
+
+.stage {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+/* The pose table: every pose in the fixture and what the companion shows. */
+.poses {
+  margin: 12px 0 0;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.poses th,
+.poses td {
+  padding: 4px 12px 4px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.poses th {
+  color: var(--muted);
+  font-weight: 600;
+}

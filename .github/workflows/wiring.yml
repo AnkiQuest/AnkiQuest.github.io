@@ -1,5 +1,6 @@
 # Regenerates wiring.json (the wiring page's data) from every AnkiQuest
-# repository's default branch, daily and on demand, and opens or updates
+# repository's default branch, daily and on demand, with its Mermaid form
+# (wiring.mmd, rendered to wiring.svg and wiring-dark.svg), and opens or updates
 # one pull request (branch wiring-update) when anything but the
 # timestamp changed. Merging it deploys the page through `pages`.
 #
@@ -46,6 +47,14 @@ jobs:
           WIRING_GITHUB_TOKEN: ${{ github.token }}
         run: nix develop -c node src/wiring.ts wiring.json
 
+      # Install scripts (Puppeteer's Chromium download) run without the token.
+      - name: Write and render wiring.mmd
+        env:
+          GH_TOKEN: ""
+        run: |
+          nix develop -c npm ci
+          nix develop -c node src/wiring-mermaid.ts
+
       # Only a change besides `generated` is worth a pull request.
       - name: Open or update the pull request
         run: |
@@ -58,15 +67,16 @@ jobs:
           gh auth setup-git
 
           # Add a commit to the open branch, or start it from master; never force-push.
-          cp wiring.json "$RUNNER_TEMP/wiring.json"
+          files="wiring.json wiring.mmd wiring.svg wiring-dark.svg"
+          for file in $files; do cp "$file" "$RUNNER_TEMP/$file"; done
           if git fetch -q origin wiring-update 2>/dev/null; then
             git checkout -q -B wiring-update FETCH_HEAD
             git merge -q --no-edit -X ours "$GITHUB_SHA"
           else
             git checkout -q -B wiring-update
           fi
-          cp "$RUNNER_TEMP/wiring.json" wiring.json
-          git add wiring.json
+          for file in $files; do cp "$RUNNER_TEMP/$file" "$file"; done
+          git add $files
           if git diff --cached --quiet; then
             echo "wiring-update already has this map" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -79,6 +89,6 @@ jobs:
             exit 0
           fi
           gh pr create --head wiring-update --base master --title "Update the wiring map" \
-            --body "Regenerated wiring.json by the wiring workflow. Review the out-of-date list on the page after merging.
+            --body "Regenerated wiring.json and wiring.mmd by the wiring workflow. Review the out-of-date list on the page after merging.
 
           Opened by the wiring workflow."

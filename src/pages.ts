@@ -393,7 +393,7 @@ function poseLink(coverage: Coverage, id: string, pose: string): string {
 /**
  * Shigeyuki's original art: a link to his Anki-tan page, and the pack files
  * AnkiQuest uses, named with what they show. His pack is not shown here:
- * his page is where to see it (hill, 2026-11-21).
+ * his page is where to see it.
  */
 function packSection(coverage: Coverage, archive: ArtArchive): string {
   const { pack } = archive;

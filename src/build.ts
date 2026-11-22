@@ -6,7 +6,7 @@
 // Art, copies it and the licences and READMEs byte for byte under
 // files/<Art path>, makes two WebP previews of each picture (matrix and card
 // size) and writes the matrix, a page per companion and the archive
-// (Shigeyuki's pack and our retired art), and the mapping tool's data
+// (a link to Shigeyuki's Anki-tan page and our retired art), and the mapping tool's data
 // from Server's pose list and every picture of Art. Previews need cwebp
 // (Debian/Ubuntu package webp).
 
@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { documents, files, parse, type Coverage } from "./coverage.ts";
-import { hash, localize, packUsed, pictures as artPictures, readManifest, walk, type Manifest, type Picture } from "./manifest.ts";
+import { hash, localize, packUsed, pictures as artPictures, readManifest, type Manifest, type Picture } from "./manifest.ts";
 import { mappingData } from "./mapping.ts";
 import {
   archivePage,
@@ -175,18 +175,19 @@ function sameBytes(server: string, art: string, known: Map<string, Picture>): (f
   };
 }
 
-/** Art's archive for the archive page. */
+// Companions whose archive the gallery does not show: Anki-tan's art is
+// Shigeyuki's, and his own page shows it (hill, 2026-11-21).
+const HIDDEN_ARCHIVE = new Set(["anki_tan", "anki_tan_chibi"]);
+
+/** Art's archive for the archive page, without the hidden companions' retired pictures. */
 function artArchive(art: string, data: Manifest): ArtArchive {
-  const pack = data.archive.pack;
-  const folder = pack.folder.replace(/\/$/, "");
   const readme = (dir: string) => (existsSync(join(art, dir, "README.md")) ? `${dir}/README.md` : null);
-  const retiredFolders = [...new Set(data.archive.retired.map((entry) => entry.file.slice(0, entry.file.lastIndexOf("/"))))].sort();
+  const retired = data.archive.retired.filter((entry) => !HIDDEN_ARCHIVE.has(entry.companion));
+  const retiredFolders = [...new Set(retired.map((entry) => entry.file.slice(0, entry.file.lastIndexOf("/"))))].sort();
   return {
-    pack,
-    packReadme: readme(folder),
-    packFiles: walk(art, folder),
+    pack: data.archive.pack,
     packUsed: packUsed(data),
-    retired: data.archive.retired,
+    retired,
     retiredReadmes: retiredFolders.flatMap((dir) => readme(dir) ?? []),
   };
 }
@@ -224,12 +225,11 @@ export function build(server: string, art: string, out: string, coverageFile?: s
       ...files(coverage),
       ...data.masters.map((entry) => entry.file),
       ...data.shared.map((entry) => entry.file),
-      ...archive.packFiles,
       ...archive.retired.map((entry) => entry.file),
     ]),
   ].sort();
   const shown = pictures(art, out, list, known);
-  const docs = [...documents(coverage), ...(archive.packReadme === null ? [] : [archive.packReadme]), ...archive.retiredReadmes];
+  const docs = [...documents(coverage), ...archive.retiredReadmes];
   [...new Set(docs)].forEach((path) => copy(art, out, path));
   const look: Look = (file) => {
     const found = shown.get(file);
@@ -242,7 +242,7 @@ export function build(server: string, art: string, out: string, coverageFile?: s
   // The matrix, a page per companion and the archive.
   writeFileSync(join(out, "index.html"), matrixPage(coverage, look, data.shared));
   for (const companion of coverage.companions) {
-    const retired = data.archive.retired.filter((entry) => entry.companion === companion.id);
+    const retired = archive.retired.filter((entry) => entry.companion === companion.id);
     writeFileSync(join(out, pageName(companion)), companionPage(coverage, companion, look, retired));
   }
   const note = (file: string) => firstParagraph(readFileSync(join(art, file), "utf8"));
@@ -273,7 +273,7 @@ export function build(server: string, art: string, out: string, coverageFile?: s
     const { core, extensions } = companion.missing;
     console.log(`${companion.id}: ${core.length} core and ${extensions.length} extensions missing`);
   }
-  console.log(`${coverage.companions.length} companions, ${shown.size} pictures (${archive.packFiles.length} of Shigeyuki's pack, ${archive.retired.length} retired), into ${out}`);
+  console.log(`${coverage.companions.length} companions, ${shown.size} pictures (${archive.retired.length} retired), into ${out}`);
 }
 
 // Run when called as a script, not when imported by the tests.

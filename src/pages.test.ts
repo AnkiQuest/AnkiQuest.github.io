@@ -136,8 +136,6 @@ const ARCHIVE: ArtArchive = {
     licence: "CC-BY-SA-4.0",
     source: "https://shigeyukey.github.io/shige-addons-wiki/Anki-tan.html",
   },
-  packReadme: "archive/anki-tan-pack/README.md",
-  packFiles: ["archive/anki-tan-pack/emoji/smile.png", "archive/anki-tan-pack/sprite/idle/0001.png"],
   packUsed: [{ pack: "sticker/face.png", file: "static/anki-tan/face.png", uses: [{ companion: "anki_tan", pose: "face" }] }],
   retired: [
     {
@@ -213,12 +211,20 @@ test("matrix: a present cell shows its picture", () => {
   assert.match(present, /href="files\/static\/aki\/celebrate\.png"/);
 });
 
-test("matrix: a fallback cell names the item it shows", () => {
+test("matrix: a fallback cell is empty and names the item it shows", () => {
   const html = matrixPage(COVERAGE, look);
   const fallback = cell(html, "aki", "icon");
   assert.match(fallback, /class="fallback"/);
+  assert.match(fallback, />empty</);
   assert.match(fallback, /shows face/);
-  assert.match(fallback, /src="thumbs\/static\/aki\/face\.png\.webp"/);
+  assert.doesNotMatch(fallback, /<img/);
+});
+
+test("companion page: a fallback card is empty and names the item it shows", () => {
+  const fallback = card(companionPage(COVERAGE, aki, look), "icon");
+  assert.match(fallback, /class="blank">empty</);
+  assert.match(fallback, /shows face/);
+  assert.doesNotMatch(fallback, /<img|credit/);
 });
 
 test("matrix: a missing cell shows no picture", () => {
@@ -252,15 +258,14 @@ test("matrix and companion pages never show the archive", () => {
   }
 });
 
-test("archive: Shigeyuki's pack apart from our retired art, each with licence and README", () => {
+test("archive: Shigeyuki's page is linked, his pack not shown; our retired art apart", () => {
   const html = archivePage(COVERAGE, look, ARCHIVE, (file) => `About ${file}.`);
   const pack = html.slice(html.indexOf('id="shigeyuki"'), html.indexOf('id="retired"'));
   assert.match(pack, /<h2>Shigeyuki's original art<\/h2>/);
   assert.match(pack, /CC-BY-SA-4\.0/);
   assert.match(pack, /Anki-tan by Shigeyuki/);
-  assert.match(pack, /About archive\/anki-tan-pack\/README\.md\./);
-  assert.match(pack, /emoji\/smile\.png/);
-  assert.match(pack, /<details>\s*<summary><code>sprite\/idle<\/code>: 1 frames<\/summary>/);
+  assert.match(pack, /<a href="https:\/\/shigeyukey\.github\.io\/shige-addons-wiki\/Anki-tan\.html">/);
+  assert.doesNotMatch(pack, /<img|anki-tan-pack/);
   assert.doesNotMatch(pack, /sad-full/);
   const retired = html.slice(html.indexOf('id="retired"'));
   assert.match(retired, /<h2>Art we made, retired<\/h2>/);
@@ -283,7 +288,6 @@ test("cards credit origin, author and licence", () => {
   assert.match(card(tan, "face"), /class="credit shigeyuki">Shigeyuki&#39;s original, pack <code>sticker\/face\.png<\/code>\. Shigeyuki, <a href="files\/anki-tan\/LICENSE">CC BY-SA 4\.0<\/a>/);
   const akiPage = companionPage(COVERAGE, aki, look);
   assert.match(card(akiPage, "happy"), /class="credit ankiquest">Made by AnkiQuest\. AnkiQuest, <a href="files\/LICENSE">AGPL-3\.0-or-later<\/a>/);
-  assert.match(card(akiPage, "icon"), /class="credit ankiquest">/);
   assert.doesNotMatch(card(akiPage, "frozen_2"), /credit/);
   const archive = archivePage(COVERAGE, look, ARCHIVE);
   assert.match(archive, /class="credit derivative">Made by AnkiQuest from Shigeyuki&#39;s Anki-tan\. AnkiQuest, after Shigeyuki/);

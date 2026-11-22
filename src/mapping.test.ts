@@ -165,6 +165,7 @@ test("a picture of another companion warns; Anki-tan chibi may use Anki-tan's", 
   assert.match(borrowWarning(d, "anki_tan", picture("aki/face.png", "aki")) ?? "", /picture of Aki/);
   assert.equal(borrowWarning(d, "aki", picture("aki/face.png", "aki")), null);
   assert.equal(borrowWarning(d, "anki_tan_chibi", picture("archive/anki-tan-pack/emoji/cry.png", "anki_tan")), null);
+  assert.equal(borrowWarning(d, "anki_tan", picture("anki-tan/chibi/face.png", "anki_tan_chibi")), null);
   assert.equal(borrowWarning(d, "aki", picture("duo/friends.png", null)), null);
 });
 

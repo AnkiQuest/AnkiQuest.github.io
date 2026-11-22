@@ -131,11 +131,11 @@ export function framingWarning(slot: Slot, picture: MappingPicture | undefined):
 
 /** The warning when a picture belongs to another companion: AGENTS.md allows no borrowed pictures. */
 export function borrowWarning(data: MappingData, companion: string, picture: MappingPicture | undefined): string | null {
-  if (picture === undefined || picture.companion === null || picture.companion === companion) {
+  if (picture === undefined || picture.companion === null) {
     return null;
   }
-  // Anki-tan chibi may use pictures of Anki-tan's pack: both are Shigeyuki's Anki-tan.
-  if (companion.startsWith(`${picture.companion}_`)) {
+  // The same character in another version, such as Anki-tan and her chibi, may share pictures.
+  if (related(data.companions, companion, picture.companion)) {
     return null;
   }
   const name = data.companions.find((entry) => entry.id === picture.companion)?.name ?? picture.companion;

@@ -40,6 +40,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31
         with:
           extra_nix_config: |
@@ -72,6 +73,11 @@ jobs:
           # Add a commit to the open branch, or start it from master; never force-push.
           files="wiring.json wiring.mmd wiring.svg wiring-dark.svg"
           for file in $files; do cp "$file" "$RUNNER_TEMP/$file"; done
+
+          # Generated files are safely backed up; restore the working tree
+          # so Git can switch branches without overwriting local changes.
+          git restore -- $files
+
           if git fetch -q origin wiring-update 2>/dev/null; then
             git checkout -q -B wiring-update FETCH_HEAD
             git merge -q --no-edit -X ours "$GITHUB_SHA"

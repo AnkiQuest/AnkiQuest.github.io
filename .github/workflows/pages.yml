@@ -33,6 +33,9 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
       - run: nix flake check
+      # mermaid-cli and the Chromium Puppeteer downloads, for the test that
+      # renders wiring.mmd.
+      - run: nix develop -c npm ci
       - run: nix develop -c npm test
 
       # The art matrix, from the pinned Server's xtask. A Server without

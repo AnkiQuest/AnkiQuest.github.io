@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { pinStatus, redact, short } from "./wiring.ts";
+import { edgeOf, merge, summary } from "./wiring-edges.ts";
 import type { Wiring } from "./wiring-model.ts";
 import {
   agentsFile,
@@ -34,6 +35,7 @@ import {
   direction,
   fallbackLane,
   lines,
+  mark,
   matches,
   places,
   stacked,
@@ -224,14 +226,21 @@ test("redact keeps only bare links between private and AnkiQuest repositories", 
       { id: "AnkiQuest/AnkiQuest-Server", kind: "repo", label: "AnkiQuest-Server", readable: true, head: "b".repeat(40) },
       { id: "nixos/nixpkgs", kind: "external", label: "nixos/nixpkgs", readable: true },
     ],
-    edges: [
+    edges: merge([
       { kind: "flake", from: "AnkiQuest/AnkiQuest-Server", to: "float3/nixos", label: "ankiquest", pinned: "c".repeat(40), latest: "b".repeat(40), behind: 12, status: "behind", detail: "x", source: "https://github.com/float3/nixos/blob/HEAD/flake.lock" },
       { kind: "flake", from: "nixos/nixpkgs", to: "float3/nixos", label: "nixpkgs", pinned: "d".repeat(40), status: "current" },
       { kind: "data", from: "AnkiQuest/AnkiQuest-Server", to: "AnkiQuest/AnkiQuest-Android", label: "fixtures", pinned: "e".repeat(40), behind: 3, status: "behind" },
-    ],
+    ]),
   };
   const out = redact(map, new Set(["float3/nixos"]));
-  assert.deepEqual(out.edges[0], { kind: "flake", from: "AnkiQuest/AnkiQuest-Server", to: "float3/nixos", label: "ankiquest", status: "none" });
+  assert.deepEqual(out.edges[0], {
+    from: "AnkiQuest/AnkiQuest-Server",
+    to: "float3/nixos",
+    kinds: ["flake"],
+    label: "flake input: ankiquest",
+    status: "none",
+    facts: [{ kind: "flake", label: "ankiquest", status: "none" }],
+  });
   assert.equal(out.edges.length, 2, "the edge to a non-AnkiQuest repository is dropped");
   assert.deepEqual(out.edges[1], map.edges[2], "public edges are unchanged");
   const nixos = out.nodes[0];
@@ -252,7 +261,11 @@ test("the committed wiring.json has no details of private repositories", () => {
     assert.equal(node.purpose, undefined);
   }
   for (const edge of map.edges.filter((candidate) => hidden.has(candidate.from) || hidden.has(candidate.to))) {
-    assert.deepEqual(Object.keys(edge).sort(), ["from", "kind", "label", "status", "to"]);
+    assert.deepEqual(Object.keys(edge).sort(), ["facts", "from", "kinds", "label", "status", "to"]);
+    assert.equal(edge.status, "none");
+    for (const fact of edge.facts) {
+      assert.deepEqual(Object.keys(fact).sort(), ["kind", "label", "status"]);
+    }
   }
   assert.ok(!map.notes.some((note) => [...hidden].some((id) => note.includes(id))));
 });
@@ -266,46 +279,83 @@ const MAP: Wiring = {
     { id: "AnkiQuest/AnkiQuest-Server", kind: "repo", label: "AnkiQuest-Server", readable: true },
     { id: "AnkiQuest/AnkiQuest-Art", kind: "repo", label: "AnkiQuest-Art", readable: true, planned: true },
   ],
-  edges: [
+  edges: merge([
     { kind: "flake", from: "AnkiQuest/AnkiQuest-Dev", to: "AnkiQuest/AnkiQuest-Server", label: "ankiquest-dev", behind: 4, status: "behind" },
     { kind: "workflow", from: "AnkiQuest/AnkiQuest-Dev", to: "AnkiQuest/AnkiQuest-Server", label: "labels.yml@master", status: "current" },
     { kind: "submodule", from: "AnkiQuest/AnkiQuest-Art", to: "AnkiQuest/AnkiQuest-Server", label: "art (planned)", status: "planned" },
-  ],
+  ]),
 };
 
 test("statusText names the status in words, with the count", () => {
-  assert.equal(statusText(MAP.edges[0]), "out of date: 4 commits behind");
-  assert.equal(statusText(MAP.edges[1]), "up to date");
-  assert.equal(statusText(MAP.edges[2]), "planned");
-  assert.equal(statusText({ ...MAP.edges[0], behind: undefined }), "out of date");
+  const [flake, workflow] = MAP.edges[0].facts;
+  assert.equal(statusText(flake), "out of date: 4 commits behind");
+  assert.equal(statusText(workflow), "up to date");
+  assert.equal(statusText(MAP.edges[1]), "planned");
+  assert.equal(statusText({ ...flake, behind: undefined }), "out of date");
 });
 
-test("visibleEdges filters by kind, status and search text", () => {
-  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: false, search: "" }).length, 3);
-  assert.equal(visibleEdges(MAP, { kinds: new Set(["workflow"]), outdated: false, search: "" }).length, 1);
+test("merge makes one edge per pair of nodes, keeping each fact", () => {
+  // JSchoreels/fsrs-rs: a Cargo pin and a watched source at the same commit.
+  const rev = "bd8932b".padEnd(40, "0");
+  const [fsrs, other] = merge([
+    { kind: "cargo", from: "JSchoreels/fsrs-rs", to: "AnkiQuest/AnkiQuest-Anki", label: "crate fsrs", pinned: rev, behind: 14, status: "behind", source: "Cargo.toml" },
+    { kind: "upstream", from: "ankitects/anki", to: "AnkiQuest/AnkiQuest-Anki", label: "main merged by the sync job", status: "current" },
+    { kind: "watched", from: "JSchoreels/fsrs-rs", to: "AnkiQuest/AnkiQuest-Anki", label: "main, ported by hand", pinned: rev, behind: 14, status: "behind", purpose: "the fork FSRS-7 depends on", source: "watched.json" },
+  ]);
+  assert.deepEqual(fsrs.kinds, ["watched", "cargo"]);
+  assert.equal(fsrs.label, "watched + Cargo pin, bd8932b, 14 behind");
+  assert.equal(fsrs.behind, 14);
+  assert.equal(fsrs.status, "behind");
   assert.deepEqual(
-    visibleEdges(MAP, { kinds: new Set(["flake", "workflow"]), outdated: true, search: "" }).map((edge) => edge.kind),
-    ["flake"],
+    fsrs.facts.map((fact) => [fact.kind, fact.source, fact.purpose]),
+    [
+      ["watched", "watched.json", "the fork FSRS-7 depends on"],
+      ["cargo", "Cargo.toml", undefined],
+    ],
+  );
+  assert.equal(other.label, "upstream merge: main merged by the sync job");
+
+  // Pins that differ are listed per kind, and the line shows each count.
+  const split = edgeOf("a/b", "c/d", [
+    { kind: "cargo", label: "crate x", pinned: "1".repeat(40), behind: 3, status: "behind" },
+    { kind: "watched", label: "main", pinned: "2".repeat(40), behind: 14, status: "behind" },
+  ]);
+  assert.equal(split.label, "watched + Cargo pin, watched 2222222, 14 behind; Cargo pin 1111111, 3 behind");
+  assert.equal(split.behind, undefined);
+  assert.equal(mark(split), "! 14, 3");
+  assert.equal(mark(fsrs), "! 14");
+
+  // Several facts of one kind are counted; a pin only some facts have shows once.
+  assert.equal(summary([{ kind: "workflow", label: "a@master", pinned: "master", status: "current" }, { kind: "workflow", label: "b@master", pinned: "master", status: "current" }]), "reusable workflow (2), master");
+  assert.equal(summary([{ kind: "data", label: "fixtures", pinned: "e".repeat(40), behind: 2, status: "behind" }, { kind: "runtime", label: "HTTPS API", status: "none" }]), "Server data + runtime, eeeeeee, 2 behind");
+});
+
+test("visibleEdges shows a merged edge when any of its kinds is shown, and filters by status and search text", () => {
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: false, search: "" }).length, 2);
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["workflow"]), outdated: false, search: "" }).length, 1, "the Dev edge shows for its workflow alone");
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["submodule"]), outdated: false, search: "" }).length, 1);
+  assert.deepEqual(
+    visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: true, search: "" }).map((edge) => edge.kinds),
+    [["flake", "workflow"]],
   );
   assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: false, search: "art" }).length, 1);
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: false, search: "labels.yml" }).length, 1, "fact labels are searched");
   assert.ok(matches(MAP.nodes[1], "server"));
   assert.ok(!matches(MAP.nodes[1], "android"));
 });
 
-test("lines draws one line per kind and pair of nodes, with its worst status", () => {
-  const drawn = lines(MAP.edges);
+test("lines draws one line per edge in its first shown kind, with its worst status", () => {
+  const all = new Set(["flake", "workflow", "submodule"] as const);
   assert.deepEqual(
-    drawn.map((line) => [line.kind, line.status, line.mark]),
+    lines(MAP.edges, new Set(all)).map((line) => [line.kind, line.status, line.mark]),
     [
       ["flake", "behind", "! 4"],
-      ["workflow", "current", ""],
       ["submodule", "planned", "~"],
     ],
   );
-  const twice = lines([MAP.edges[0], { ...MAP.edges[0], behind: 2 }]);
-  assert.equal(twice.length, 1);
-  assert.equal(twice[0].mark, "! 2");
-  assert.equal(lines([{ ...MAP.edges[0], behind: 0 }])[0].mark, "!");
+  assert.equal(lines(MAP.edges, new Set(["workflow"]))[0].kind, "workflow");
+  const uncounted = edgeOf("a/b", "c/d", [{ kind: "agents", label: "AGENTS.md", pinned: "differs", status: "behind" }]);
+  assert.equal(mark(uncounted), "!");
 });
 
 test("wrap breaks after slashes and hyphens; boxSize grows with lines", () => {
@@ -329,11 +379,11 @@ test("the fan-out kinds start off; badges name what they would draw", () => {
   const fan: Wiring = {
     ...MAP,
     nodes: [...MAP.nodes, { id: "AnkiQuest/AnkiQuest-Agents", kind: "repo", label: "AnkiQuest-Agents", readable: true }],
-    edges: [
+    edges: merge([
       { kind: "agents", from: "AnkiQuest/AnkiQuest-Agents", to: "AnkiQuest/AnkiQuest-Server", label: "AGENTS.md", status: "behind" },
       { kind: "agents", from: "AnkiQuest/AnkiQuest-Agents", to: "AnkiQuest/AnkiQuest-Dev", label: "AGENTS.md", status: "current" },
       { kind: "agents", from: "AnkiQuest/AnkiQuest-Agents", to: "AnkiQuest/AnkiQuest-Agents", label: "AGENTS.md", status: "behind" },
-    ],
+    ]),
   };
   assert.deepEqual(badge(fan, "AnkiQuest/AnkiQuest-Agents", shown), ["AGENTS.md → 2 (1 !)"]);
   assert.deepEqual(badge(fan, "AnkiQuest/AnkiQuest-Server", shown), ["AGENTS.md !"]);
@@ -376,7 +426,7 @@ test("places gives nodes missing from LAYOUT a fixed place at the bottom of thei
       { id: "someone/upstream", kind: "external", label: "someone/upstream", readable: true },
       { id: "maven:org.example", kind: "package", label: "org.example", readable: true },
     ],
-    edges: [{ kind: "publishes", from: "AnkiQuest/AnkiQuest-Anki", to: "maven:org.example", label: "publishes", status: "none" }],
+    edges: merge([{ kind: "publishes", from: "AnkiQuest/AnkiQuest-Anki", to: "maven:org.example", label: "publishes", status: "none" }]),
   };
   const at = places(map);
   assert.deepEqual(at.get("AnkiQuest/AnkiQuest-Anki"), LAYOUT["AnkiQuest/AnkiQuest-Anki"]);
@@ -430,7 +480,16 @@ test("the committed wiring.json has edges between known nodes", () => {
   const map = JSON.parse(readFileSync(new URL("../wiring.json", import.meta.url), "utf8")) as Wiring;
   const ids = new Set(map.nodes.map((node) => node.id));
   assert.ok(map.edges.length > 0);
+  const pairs = new Set<string>();
   for (const edge of map.edges) {
     assert.ok(ids.has(edge.from) && ids.has(edge.to), `${edge.from} -> ${edge.to}`);
+    assert.ok(!pairs.has(`${edge.from} ${edge.to}`), `one edge per pair: ${edge.from} -> ${edge.to}`);
+    pairs.add(`${edge.from} ${edge.to}`);
+    assert.deepEqual(edge, edgeOf(edge.from, edge.to, edge.facts), "kinds, label and status follow the facts");
+  }
+
+  // Watched sources say what they are watched for.
+  for (const fact of map.edges.flatMap((edge) => edge.facts).filter((candidate) => candidate.kind === "watched")) {
+    assert.ok(fact.purpose, fact.label);
   }
 });

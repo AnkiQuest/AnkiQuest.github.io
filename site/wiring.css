@@ -90,7 +90,8 @@ main.wiring {
   min-width: 0;
 }
 
-#controls legend button {
+#controls legend button,
+#copy {
   font: inherit;
   font-size: 0.8rem;
   background: none;
@@ -277,4 +278,45 @@ main.wiring {
 #notes {
   font-size: 0.9rem;
   overflow-wrap: anywhere;
+}
+
+/* The static Mermaid picture scrolls inside its box at a readable size; its source scrolls too. */
+.mermaid .diagram {
+  display: block;
+  overflow: auto;
+  max-height: 85vh;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 8px;
+}
+
+.mermaid .diagram img {
+  display: block;
+  width: 3200px;
+  max-width: none;
+  height: auto;
+}
+
+.source-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.source-head h3 {
+  margin: 0;
+}
+
+.mermaid pre.source {
+  max-height: 32em;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--tile);
+  font-size: 12px;
+  line-height: 1.45;
 }

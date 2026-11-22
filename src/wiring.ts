@@ -14,7 +14,8 @@ import { basename, dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Clones } from "./wiring-git.ts";
-import type { EdgeKind, Status, Wiring, WiringEdge, WiringNode } from "./wiring-model.ts";
+import { edgeOf, merge, type Link } from "./wiring-edges.ts";
+import type { EdgeKind, Status, Wiring, WiringEdge, WiringFact, WiringNode } from "./wiring-model.ts";
 import {
   agentsFile,
   agentsTargets,
@@ -72,14 +73,15 @@ const PRIVATE_NOTE = "Private repository: only its links to AnkiQuest repositori
 /**
  * Strips a map to what may be public about `hidden` repositories: each
  * becomes a bare node, and of its edges only those to AnkiQuest repositories
- * (or another hidden one) stay, with kind, ends and label and nothing else.
+ * (or another hidden one) stay, each fact with kind and label and nothing else.
  */
 export function redact(map: Wiring, hidden: Set<string>): Wiring {
   const touches = (edge: WiringEdge): boolean => hidden.has(edge.from) || hidden.has(edge.to);
   const allowed = (id: string): boolean => hidden.has(id) || id.startsWith(`${ORG}/`);
+  const bare = (fact: WiringFact): WiringFact => ({ kind: fact.kind, label: fact.kind === "agents" ? "AGENTS.md" : fact.label, status: "none" });
   const edges = map.edges
     .filter((edge) => !touches(edge) || (allowed(edge.from) && allowed(edge.to)))
-    .map((edge): WiringEdge => (touches(edge) ? { kind: edge.kind, from: edge.from, to: edge.to, label: edge.kind === "agents" ? "AGENTS.md" : edge.label, status: "none" } : edge));
+    .map((edge): WiringEdge => (touches(edge) ? edgeOf(edge.from, edge.to, edge.facts.map(bare)) : edge));
   const nodes = map.nodes.map((node): WiringNode =>
     hidden.has(node.id) ? { id: node.id, kind: node.kind, label: node.label, url: node.url, private: true, readable: false, note: PRIVATE_NOTE } : node,
   );
@@ -161,7 +163,7 @@ export function short(value: string | undefined): string | undefined {
 class Collector {
   private readonly clones: Clones;
   private readonly nodes = new Map<string, WiringNode>();
-  private readonly edges: WiringEdge[] = [];
+  private readonly edges: Link[] = [];
   private readonly notes: string[] = [];
   private readonly ours: RepoRow[] = [];
   private readonly readable = new Set<string>();
@@ -199,7 +201,7 @@ class Collector {
     const map = {
       generated: new Date().toISOString(),
       nodes: [...this.nodes.values()].filter((node) => node.kind === "repo" || node.kind === "fork" || used.has(node.id)),
-      edges: this.edges,
+      edges: merge(this.edges),
       notes: this.notes,
     };
     return redact(map, this.hidden);
@@ -236,8 +238,8 @@ class Collector {
     return node;
   }
 
-  /** Adds an edge, making nodes for both ends. */
-  private edge(edge: WiringEdge): void {
+  /** Adds a fact, making nodes for both ends; collect() merges the facts of each pair into one edge. */
+  private edge(edge: Link): void {
     this.node(edge.from);
     this.node(edge.to);
     this.edges.push(edge);
@@ -299,7 +301,7 @@ class Collector {
   }
 
   /** A pin of `target` at `pinned`: latest commit, commits behind and status. */
-  private pin(target: string, pinned: string | undefined, branch?: string): Pick<WiringEdge, "pinned" | "latest" | "behind" | "status"> {
+  private pin(target: string, pinned: string | undefined, branch?: string): Pick<WiringFact, "pinned" | "latest" | "behind" | "status"> {
     try {
       const { ref, commit } = this.latest(target, branch);
       const behind = pinned ? this.clones.count(target, pinned, ref) : undefined;
@@ -392,7 +394,7 @@ class Collector {
   }
 
   /** Whether a used workflow or action exists in its repository, and how its ref is pinned. */
-  private reusable(target: string, path: string, ref: string): Pick<WiringEdge, "pinned" | "latest" | "status" | "detail"> {
+  private reusable(target: string, path: string, ref: string): Pick<WiringFact, "pinned" | "latest" | "status" | "detail"> {
     const files = this.readable.has(target) ? this.clones.files(target) : undefined;
     if (files === undefined) {
       return { pinned: ref, status: "unknown" };
@@ -679,14 +681,14 @@ class Collector {
         const ref = this.clones.fetch(entry.target, entry.source, entry.ref);
         if (entry.kind === "version") {
           const current = properties(this.clones.readAt(entry.target, ref, entry.file ?? "") ?? "").get(entry.key ?? "");
-          this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.key} on ${entry.ref}`, pinned: entry.reviewed, latest: current, status: pinStatus(entry.reviewed, current, undefined), detail: entry.why, source });
+          this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.key} on ${entry.ref}`, pinned: entry.reviewed, latest: current, status: pinStatus(entry.reviewed, current, undefined), purpose: entry.why, source });
           continue;
         }
         const latest = this.clones.resolve(entry.target, ref);
         const behind = this.clones.count(entry.target, entry.reviewed, ref);
-        this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.ref}, ported by hand`, pinned: entry.reviewed, latest, behind, status: pinStatus(entry.reviewed, latest, behind), detail: entry.why, source });
+        this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.ref}, ported by hand`, pinned: entry.reviewed, latest, behind, status: pinStatus(entry.reviewed, latest, behind), purpose: entry.why, source });
       } catch (error) {
-        this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.ref}, ported by hand`, pinned: entry.reviewed, status: "unknown", detail: String(error), source });
+        this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.ref}, ported by hand`, pinned: entry.reviewed, status: "unknown", purpose: entry.why, detail: String(error), source });
       }
     }
   }
@@ -769,7 +771,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const out = args[0] ?? "wiring.json";
   const wiring = await collect(cache);
   writeFileSync(out, `${JSON.stringify(wiring, null, 2)}\n`);
-  const behind = wiring.edges.filter((edge) => edge.status === "behind").length;
-  const unknown = wiring.edges.filter((edge) => edge.status === "unknown").length;
-  console.log(`${wiring.nodes.length} nodes, ${wiring.edges.length} edges (${behind} behind, ${unknown} unknown), ${wiring.notes.length} notes, into ${out}`);
+  const facts = wiring.edges.flatMap((edge) => edge.facts);
+  const behind = facts.filter((fact) => fact.status === "behind").length;
+  const unknown = facts.filter((fact) => fact.status === "unknown").length;
+  console.log(`${wiring.nodes.length} nodes, ${wiring.edges.length} edges of ${facts.length} facts (${behind} behind, ${unknown} unknown), ${wiring.notes.length} notes, into ${out}`);
 }

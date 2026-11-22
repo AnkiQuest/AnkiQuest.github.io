@@ -22,6 +22,7 @@ import { mappingData } from "./mapping.ts";
 import {
   archivePage,
   companionPage,
+  esc,
   fileHref,
   firstParagraph,
   mappingPage,
@@ -34,7 +35,13 @@ import {
 } from "./pages.ts";
 
 /** The files under site/ copied next to the pages. */
-const ASSETS = ["style.css", "wiring.html", "wiring.css", "mapping.css"];
+const ASSETS = ["style.css", "wiring.css", "mapping.css"];
+
+/** The wiring page, with the Mermaid source written into it. */
+const WIRING_PAGE = "wiring.html";
+
+/** Where the Mermaid source goes in the wiring page. */
+const MERMAID_SLOT = "<!-- wiring.mmd -->";
 
 /** The pages' scripts, in TypeScript under site/, stripped to JavaScript on the site. */
 const SCRIPTS = ["wiring.ts", "mapping.ts"];
@@ -43,8 +50,12 @@ const SCRIPTS = ["wiring.ts", "mapping.ts"];
 const POSES = "tests/fixtures/companion_poses.json";
 const MOODS = "tests/fixtures/streak_moods.json";
 
-/** The wiring map's data, at the repository root, written by src/wiring.ts. */
-const WIRING_DATA = "wiring.json";
+/**
+ * The wiring map at the repository root, served as plain files at the site
+ * root so agents can fetch them: the data (written by src/wiring.ts), its
+ * Mermaid source and the source rendered light and dark (src/wiring-mermaid.ts).
+ */
+const WIRING_FILES = ["wiring.json", "wiring.mmd", "wiring.svg", "wiring-dark.svg"];
 
 /** The command, run in the checkout, that prints the art matrix. */
 const COVERAGE_COMMAND = ["run", "-q", "-p", "ankiquest-xtask", "--", "art-coverage", "--json"];
@@ -189,6 +200,14 @@ function artCommit(art: string): string | null {
   }
 }
 
+/** The wiring page with the Mermaid source in its code block. */
+export function wiringPage(html: string, source: string): string {
+  if (!html.includes(MERMAID_SLOT)) {
+    throw new Error(`${WIRING_PAGE} has no ${MERMAID_SLOT}`);
+  }
+  return html.replace(MERMAID_SLOT, () => esc(source.trimEnd()));
+}
+
 /** Builds the site into `out`, replacing what was there. */
 export function build(server: string, art: string, out: string, coverageFile?: string): void {
   const data = readManifest(art);
@@ -237,7 +256,10 @@ export function build(server: string, art: string, out: string, coverageFile?: s
   for (const script of SCRIPTS) {
     writeFileSync(join(out, script.replace(/\.ts$/, ".js")), stripTypeScriptTypes(readFileSync(join(site, script), "utf8")));
   }
-  copyFileSync(join(site, "..", WIRING_DATA), join(out, WIRING_DATA));
+  for (const file of WIRING_FILES) {
+    copyFileSync(join(site, "..", file), join(out, file));
+  }
+  writeFileSync(join(out, WIRING_PAGE), wiringPage(readFileSync(join(site, WIRING_PAGE), "utf8"), readFileSync(join(site, "..", "wiring.mmd"), "utf8")));
 
   // The mapping tool: every slot by every companion, and every picture of Art.
   const poses = JSON.parse(readFileSync(join(server, POSES), "utf8"));

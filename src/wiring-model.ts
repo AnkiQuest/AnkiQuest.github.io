@@ -61,22 +61,57 @@ export interface WiringNode {
   note?: string;
 }
 
-/** One link between two nodes. */
-export interface WiringEdge {
+/** Each kind in an edge's label: "watched + Cargo pin, bd8932b, 14 behind". */
+export const KIND_LABELS: Record<EdgeKind, string> = {
+  upstream: "upstream merge",
+  watched: "watched",
+  submodule: "submodule",
+  flake: "flake input",
+  cargo: "Cargo pin",
+  maven: "Maven",
+  publishes: "publishes",
+  vendored: "vendored",
+  workflow: "reusable workflow",
+  checkout: "CI checkout",
+  data: "Server data",
+  agents: "AGENTS.md",
+  runtime: "runtime",
+};
+
+/** One fact behind an edge: one kind of link, made by one file. */
+export interface WiringFact {
   kind: EdgeKind;
-  from: string;
-  to: string;
   label: string;
-  /** The commit or version the receiving side uses. */
+  /** The commit or version the receiving side uses (for a watched source: the one reviewed). */
   pinned?: string;
   /** The newest commit or version available. */
   latest?: string;
   /** Commits the pin lacks, where counted. */
   behind?: number;
   status: Status;
+  /** What a watched source is watched for (watched.json's `why`). */
+  purpose?: string;
   detail?: string;
-  /** Link to the file that makes this edge. */
+  /** Link to the file that makes this fact. */
   source?: string;
+}
+
+/**
+ * Everything one node gives another, as one edge: every fact between the
+ * pair, of every kind. The page draws it when any of its kinds is shown.
+ */
+export interface WiringEdge {
+  from: string;
+  to: string;
+  /** The kinds of its facts, in EDGE_KINDS order. */
+  kinds: EdgeKind[];
+  /** A summary: kinds, pin and status, such as "watched + Cargo pin, bd8932b, 14 behind". */
+  label: string;
+  /** The worst status of its facts. */
+  status: Status;
+  /** Commits behind, when every out-of-date fact with a count agrees. */
+  behind?: number;
+  facts: WiringFact[];
 }
 
 /** The whole map. */

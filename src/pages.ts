@@ -493,7 +493,7 @@ export function mappingPage(coverage: Coverage): string {
 </div>
 <div class="picker-body">
 <div id="preview" class="preview" aria-live="polite"></div>
-<div><p id="result-count" class="muted"></p><ul id="results" class="results" aria-label="Pictures in AnkiQuest-Art"></ul></div>
+<div><p id="result-count" class="muted"></p><ul id="results" class="results" aria-label="Pictures in AnkiQuest-Art"></ul><p><button type="button" id="show-others" hidden>Show more from other companions</button></p></div>
 </div>
 </dialog>`;
   return layout(coverage, "AnkiQuest mapping tool", "Choose the picture each AnkiQuest companion shows for every pose, launcher icon and moment picture, and export it for AnkiQuest-Art.", body, head);

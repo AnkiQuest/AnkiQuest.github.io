@@ -72,6 +72,11 @@ jobs:
           # Add a commit to the open branch, or start it from master; never force-push.
           files="wiring.json wiring.mmd wiring.svg wiring-dark.svg"
           for file in $files; do cp "$file" "$RUNNER_TEMP/$file"; done
+
+          # Generated files are safely backed up; restore the working tree
+          # so Git can switch branches without overwriting local changes.
+          git restore -- $files
+
           if git fetch -q origin wiring-update 2>/dev/null; then
             git checkout -q -B wiring-update FETCH_HEAD
             git merge -q --no-edit -X ours "$GITHUB_SHA"

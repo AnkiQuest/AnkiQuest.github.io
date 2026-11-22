@@ -7,7 +7,7 @@
 // build.ts strips the types into mapping.js. The helpers above main() are
 // pure, so the tests import this file in Node.
 
-import type { Framing, MappingData, MappingMaster, MappingPicture, Slot, SlotGroup } from "../src/mapping-model.ts";
+import type { Framing, MappingCompanion, MappingData, MappingMaster, MappingPicture, Slot, SlotGroup } from "../src/mapping-model.ts";
 
 /** What a slot is set to: a picture of Art, or nothing (the slot shows its fallback). */
 export type Choice = { state: "picture"; file: string } | { state: "missing" };
@@ -131,11 +131,11 @@ export function framingWarning(slot: Slot, picture: MappingPicture | undefined):
 
 /** The warning when a picture belongs to another companion: AGENTS.md allows no borrowed pictures. */
 export function borrowWarning(data: MappingData, companion: string, picture: MappingPicture | undefined): string | null {
-  if (picture === undefined || picture.companion === null || picture.companion === companion) {
+  if (picture === undefined || picture.companion === null) {
     return null;
   }
-  // Anki-tan chibi may use pictures of Anki-tan's pack: both are Shigeyuki's Anki-tan.
-  if (companion.startsWith(`${picture.companion}_`)) {
+  // The same character in another version, such as Anki-tan and her chibi, may share pictures.
+  if (related(data.companions, companion, picture.companion)) {
     return null;
   }
   const name = data.companions.find((entry) => entry.id === picture.companion)?.name ?? picture.companion;
@@ -277,14 +277,39 @@ export function readDraft(base: Mapping, text: string | null): { mapping: Mappin
   return { mapping, art: value.art ?? null };
 }
 
-/** Pictures matching the picker's filters; this companion's first, then by path. */
+/**
+ * Whether a picture of `other` belongs with `companion` in the picker: the same
+ * companion, or one whose Art folder holds the other's (Anki-tan and her chibi).
+ */
+export function related(companions: MappingCompanion[], companion: string, other: string | null): boolean {
+  if (other === null) {
+    return false;
+  }
+  if (other === companion) {
+    return true;
+  }
+  const folder = (id: string) => companions.find((entry) => entry.id === id)?.folder;
+  const [a, b] = [folder(companion), folder(other)];
+  return a !== undefined && b !== undefined && (a.startsWith(`${b}/`) || b.startsWith(`${a}/`));
+}
+
+/**
+ * Pictures matching the picker's filters; this companion's first, then by path.
+ * Unless `others` is set or a companion is chosen, only pictures related to
+ * `companion` are kept.
+ */
 export function filterPictures(
   pictures: MappingPicture[],
-  filter: { text: string; folder: string; companion: string; framing: string },
+  filter: { text: string; folder: string; companion: string; framing: string; others?: boolean },
   companion: string,
+  companions: MappingCompanion[] = [],
 ): MappingPicture[] {
   const words = filter.text.toLowerCase().split(/\s+/).filter((word) => word !== "");
+  const own = filter.others === false && filter.companion === "";
   const found = pictures.filter((picture) => {
+    if (own && !related(companions, companion, picture.companion)) {
+      return false;
+    }
     if (filter.folder !== "" && picture.folder !== filter.folder) {
       return false;
     }
@@ -453,6 +478,8 @@ async function main(): Promise<void> {
   const dialog = $<HTMLDialogElement>("#picker");
   let open: { companion: string; slot: Slot; button: string } | undefined;
   let previewed: string | undefined;
+  // Other companions' pictures stay hidden until asked for, each time the picker opens.
+  let others = false;
   const folders = [...new Set(data.pictures.map((picture) => picture.folder))].sort();
   $("#filter-folder").innerHTML = `<option value="">Every folder</option>${folders.map((folder) => `<option>${esc(folder)}</option>`).join("")}`;
   $("#filter-companion").innerHTML = `<option value="">Every companion</option>${data.companions.map((companion) => `<option value="${esc(companion.id)}">${esc(companion.name)}</option>`).join("")}<option value="none">Several or none</option>`;
@@ -487,9 +514,13 @@ ${warnings.map((text) => `<p class="warn">! ${esc(text)} You can still use it.</
       companion: $<HTMLSelectElement>("#filter-companion").value,
       framing: $<HTMLSelectElement>("#filter-framing").value,
     };
-    const found = filterPictures(data.pictures, filter, open.companion);
+    const found = filterPictures(data.pictures, { ...filter, others }, open.companion, data.companions);
+    const hidden = others ? 0 : filterPictures(data.pictures, { ...filter, others: true }, open.companion).length - found.length;
     const chosen = current.get(key(open.companion, open.slot.name));
     $("#result-count").textContent = `${found.length} of ${data.pictures.length} pictures`;
+    const more = $<HTMLButtonElement>("#show-others");
+    more.hidden = hidden === 0;
+    more.textContent = `Show ${hidden} more from other companions`;
     $("#results").innerHTML = found
       .map((picture) => {
         const name = picture.path.slice(picture.path.lastIndexOf("/") + 1);
@@ -519,6 +550,7 @@ ${warnings.map((text) => `<p class="warn">! ${esc(text)} You can still use it.</
     const chosen = current.get(id)!;
     const before = base.get(id)!;
     previewed = chosen.state === "picture" ? chosen.file : undefined;
+    others = false;
     const shown = resolve(data, current, companion, pose);
     const now = shown.status === "present" ? `<code>${esc(shown.file)}</code>` : shown.status === "fallback" ? `missing; falls back to ${esc(slotTitle(shown.shows))} (<code>${esc(shown.file)}</code>)` : "missing; shows nothing";
     $("#picker-title").textContent = `${companionName(companion)}: ${slot.title}`;
@@ -550,6 +582,10 @@ ${warnings.map((text) => `<p class="warn">! ${esc(text)} You can still use it.</
       other.setAttribute("aria-pressed", String(other === button));
     }
     preview();
+    // On narrow screens the preview, with its "Use this picture" button, is above the list.
+    if (window.matchMedia("(max-width: 799px)").matches) {
+      $("#preview").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
   });
   $("#results").addEventListener("dblclick", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button.pick");
@@ -560,6 +596,10 @@ ${warnings.map((text) => `<p class="warn">! ${esc(text)} You can still use it.</
   for (const id of ["#filter-text", "#filter-folder", "#filter-companion", "#filter-framing"]) {
     $(id).addEventListener("input", results);
   }
+  $("#show-others").addEventListener("click", () => {
+    others = true;
+    results();
+  });
   $("#filter-clear").addEventListener("click", () => {
     $<HTMLInputElement>("#filter-text").value = "";
     for (const id of ["#filter-folder", "#filter-companion", "#filter-framing"]) {

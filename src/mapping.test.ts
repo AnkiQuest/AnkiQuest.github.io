@@ -18,6 +18,7 @@ import {
   framingWarning,
   importMapping,
   key,
+  related,
   readDraft,
   resolve,
   type Mapping,
@@ -205,6 +206,7 @@ test("a picture of another companion warns; Anki-tan chibi may use Anki-tan's", 
   assert.match(borrowWarning(d, "anki_tan", picture("aki/face.png", "aki")) ?? "", /picture of Aki/);
   assert.equal(borrowWarning(d, "aki", picture("aki/face.png", "aki")), null);
   assert.equal(borrowWarning(d, "anki_tan_chibi", picture("archive/anki-tan-pack/emoji/cry.png", "anki_tan")), null);
+  assert.equal(borrowWarning(d, "anki_tan", picture("anki-tan/chibi/face.png", "anki_tan_chibi")), null);
   assert.equal(borrowWarning(d, "aki", picture("duo/friends.png", null)), null);
 });
 
@@ -302,6 +304,23 @@ test("the picker filters by words, folder, companion and framing, this companion
   assert.deepEqual(filterPictures(pictures, { ...all, folder: "aki", framing: "full_body" }, "aki").map((p) => p.path), ["aki/happy.png", "aki/study.png"]);
   assert.deepEqual(filterPictures(pictures, { ...all, framing: "unknown" }, "aki").map((p) => p.path), ["archive/anki-tan-pack/emoji/cry.png"]);
   assert.deepEqual(filterPictures(pictures, { ...all, companion: "aki" }, "aki").length, 3);
+});
+
+test("the picker shows the companion's own pictures until asked for the others", () => {
+  const { pictures, companions } = data();
+  const own = { text: "", folder: "", companion: "", framing: "", others: false };
+  const shown = filterPictures(pictures, own, "anki_tan", companions);
+  assert.ok(shown.length > 0);
+  assert.ok(shown.every((p) => p.companion === "anki_tan"), "only Anki-tan's pictures, her pack included");
+  assert.ok(filterPictures(pictures, { ...own, others: true }, "anki_tan", companions).some((p) => p.companion === "aki"));
+  // Choosing a companion in the filter shows that companion's pictures.
+  assert.ok(filterPictures(pictures, { ...own, companion: "aki" }, "anki_tan", companions).every((p) => p.companion === "aki"));
+
+  const family = [...companions, { id: "anki_tan_chibi", name: "Anki-tan chibi", stage: "live", folder: "anki-tan/chibi" }];
+  assert.ok(related(family, "anki_tan_chibi", "anki_tan"));
+  assert.ok(related(family, "anki_tan", "anki_tan_chibi"));
+  assert.ok(!related(family, "anki_tan", "aki"));
+  assert.ok(!related(family, "anki_tan", null));
 });
 
 /** A small manifest for the build side. */

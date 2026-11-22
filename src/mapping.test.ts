@@ -21,7 +21,9 @@ import {
   resolve,
   type Mapping,
 } from "../site/mapping.ts";
-import type { Manifest } from "./manifest.ts";
+import { copied } from "./build.ts";
+import type { Coverage } from "./coverage.ts";
+import type { Manifest, Picture } from "./manifest.ts";
 import type { MappingData, MappingPicture } from "./mapping-model.ts";
 import { companionOf, mappingData } from "./mapping.ts";
 import type { Shown } from "./pages.ts";
@@ -322,4 +324,18 @@ test("mapping.json: every picture with its credit and framing, the manifest's ma
   // A framing the gallery does not know fails the build.
   const odd = { ...MANIFEST, masters: [{ ...MANIFEST.masters[0], framing: "knees" } as Manifest["masters"][number]] };
   assert.throws(() => mappingData(odd, shown, () => 0, COLUMNS, POSES, MOODS, null), /framing knees/);
+});
+
+test("copied: the site gets every picture of Art, so the mapping tool can offer the pack and hidden retired ones", () => {
+  const coverage = {
+    companions: [{ items: [{ status: "present", file: "aki/face.png" }], unlisted: [] }],
+    archive: [],
+  } as unknown as Coverage;
+  const known = new Map<string, Picture>(
+    ["aki/face.png", "archive/anki-tan-pack/emoji/smile.png", "archive/anki-tan/sad-old.png"].map((file) => [
+      file,
+      { file, origin: "shigeyuki", author: "Shigeyuki", licence: "CC-BY-SA-4.0" },
+    ]),
+  );
+  assert.deepEqual(copied(coverage, known), ["aki/face.png", "archive/anki-tan-pack/emoji/smile.png", "archive/anki-tan/sad-old.png"]);
 });

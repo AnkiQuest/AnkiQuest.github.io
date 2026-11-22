@@ -51,7 +51,7 @@ const DESKTOP = `${ORG}/AnkiQuest-Desktop`;
 const EXTRA_REPOS: RepoRow[] = [{ repo: "float3/nixos", purpose: "" }];
 
 /**
- * Private repositories (hill, 2026-11-21): the public map shows them only as
+ * Private repositories: the public map shows them only as
  * nodes with their links to AnkiQuest repositories, without commits, pins,
  * counts, paths or other details. The generator never reads them, so the
  * daily run needs no token for them; their links are declared here. A
@@ -91,7 +91,7 @@ export function redact(map: Wiring, hidden: Set<string>): Wiring {
 
 /**
  * Repositories that are decided but may not exist yet, and the repositories
- * that will take them as a submodule (hill, 2026-11-21: the art moves to
+ * that will take them as a submodule (the art moves to
  * AnkiQuest-Art). Until a repository has commits it shows as planned; each
  * submodule edge shows as planned until the consumer's .gitmodules has it.
  */

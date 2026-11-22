@@ -176,7 +176,7 @@ function sameBytes(server: string, art: string, known: Map<string, Picture>): (f
 }
 
 // Companions whose archive the gallery does not show: Anki-tan's art is
-// Shigeyuki's, and his own page shows it (hill, 2026-11-21).
+// Shigeyuki's, and his own page shows it.
 const HIDDEN_ARCHIVE = new Set(["anki_tan", "anki_tan_chibi"]);
 
 /** Art's archive for the archive page, without the hidden companions' retired pictures. */

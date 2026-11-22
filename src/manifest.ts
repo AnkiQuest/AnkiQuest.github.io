@@ -246,7 +246,7 @@ export function localize(
 
     // Art decides what is drawn: an item Server shows but Art has no master
     // for (an icon Server still uses as a pose, say) is not drawn, and
-    // shows its fallback or nothing (hill, 2026-11-21). The file of a
+    // shows its fallback or nothing. The file of a
     // fallback cell stays Server's: the gallery does not show it.
     const missing = { core: [...companion.missing.core], extensions: [...companion.missing.extensions] };
     const cells = companion.items.map((cell): Cell => {

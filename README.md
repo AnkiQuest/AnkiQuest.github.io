@@ -33,7 +33,7 @@ node src/wiring-mermaid.ts
 
 `src/wiring-mermaid.ts` writes the same map as Mermaid, `wiring.mmd` (one subgraph per lane, for agents), and renders it with mermaid-cli to `wiring.svg` and `wiring-dark.svg`, which the page shows. The site serves `wiring.json`, `wiring.mmd` and both SVGs at its root. `npm test` checks that the committed files match `wiring.json` and needs `npm ci` first; set `PUPPETEER_EXECUTABLE_PATH` to use a Chromium already installed. Every edge joins one pair of nodes and lists each kind of link between them (a Cargo pin and a watched source of the same repository are one edge), with each fact's pin and file.
 
-The `wiring` workflow runs both daily and opens a pull request when the map changes. Private repositories are never read: the page shows them only as nodes with their links to AnkiQuest repositories.
+The `wiring` workflow runs both daily, on demand, and on a `repository_dispatch` of type `wiring-changed`, which AnkiQuest-Sync sends when a repository or package the map reads has moved since the last build. It opens or updates one pull request when the map changes, with AnkiQuest-Sync's `FORK_SYNC_TOKEN` so the checks run. Private repositories are never read: the page shows them only as nodes with their links to AnkiQuest repositories.
 
 The page lays the map out by hand: `LAYOUT` in `site/wiring.ts` places every node in a lane (upstreams, core, clients, app forks, server and web, shared infrastructure), so the picture stays the same between regenerations. A new node is placed at the bottom of its lane until it gets an entry there.
 

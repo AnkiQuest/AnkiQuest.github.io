@@ -1,21 +1,30 @@
 # Regenerates wiring.json (the wiring page's data) from every AnkiQuest
-# repository's default branch, daily and on demand, with its Mermaid form
+# repository's default branch, daily, on demand and on the `wiring-changed`
+# repository_dispatch, with its Mermaid form
 # (wiring.mmd, rendered to wiring.svg and wiring-dark.svg), and opens or updates
 # one pull request (branch wiring-update) when anything but the
 # timestamp changed. Merging it deploys the page through `pages`.
 #
 # Reads public repositories only. Private ones (AnkiQuest-Hosting,
 # float3/nixos) are never read: the generator declares their links to
-# AnkiQuest repositories and shows nothing else of them (hill, 2026-11-21).
+# AnkiQuest repositories and shows nothing else of them.
 # GITHUB_TOKEN is sent to the GitHub API for its higher rate limit.
-# Pull requests opened with GITHUB_TOKEN start no CI; the checks run once
-# someone pushes to the branch, or on the merge.
+#
+# AnkiQuest-Sync's wiring job sends `wiring-changed` when a repository or
+# package the map reads has moved since the last build, and its agents and
+# art jobs send it after changing pull requests.
+#
+# FORK_SYNC_TOKEN (AnkiQuest-Sync's token; Contents and Pull requests write
+# here) pushes the branch and opens the pull request, so its CI runs. Without
+# it the job falls back to GITHUB_TOKEN, whose pull requests start no CI.
 name: wiring
 
 on:
   schedule:
     - cron: "41 4 * * *"
   workflow_dispatch:
+  repository_dispatch:
+    types: [wiring-changed]
 
 permissions:
   contents: read
@@ -60,10 +69,16 @@ jobs:
 
       # Only a change besides `generated` is worth a pull request.
       - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ secrets.FORK_SYNC_TOKEN || github.token }}
+          SYNC_TOKEN_SET: ${{ secrets.FORK_SYNC_TOKEN != '' }}
         run: |
           if [ "$(git show HEAD:wiring.json | jq -S 'del(.generated)')" = "$(jq -S 'del(.generated)' wiring.json)" ]; then
             echo "wiring.json unchanged" >> "$GITHUB_STEP_SUMMARY"
             exit 0
+          fi
+          if [ "$SYNC_TOKEN_SET" != true ]; then
+            echo "::warning::FORK_SYNC_TOKEN is not available here; the pull request is opened with GITHUB_TOKEN and starts no CI."
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

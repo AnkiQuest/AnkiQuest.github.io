@@ -209,6 +209,15 @@ export function wiringPage(html: string, source: string): string {
   return html.replace(MERMAID_SLOT, () => esc(source.trimEnd()));
 }
 
+/**
+ * The pictures the site copies: those the matrix shows, and every other picture
+ * of Art, since the mapping tool offers each. That includes Shigeyuki's pack and
+ * the retired pictures the archive page hides.
+ */
+export function copied(coverage: Coverage, known: Map<string, Picture>): string[] {
+  return [...new Set([...files(coverage), ...known.keys()])].sort();
+}
+
 /** Builds the site into `out`, replacing what was there. */
 export function build(server: string, art: string, out: string, coverageFile?: string): void {
   const data = readManifest(art);
@@ -218,17 +227,8 @@ export function build(server: string, art: string, out: string, coverageFile?: s
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
 
-  // Pictures, licence texts and READMEs, as Art lays them out: every
-  // picture of Art, since the mapping tool offers each.
-  const list = [
-    ...new Set([
-      ...files(coverage),
-      ...data.masters.map((entry) => entry.file),
-      ...data.shared.map((entry) => entry.file),
-      ...archive.retired.map((entry) => entry.file),
-    ]),
-  ].sort();
-  const shown = pictures(art, out, list, known);
+  // Pictures, licence texts and READMEs, as Art lays them out.
+  const shown = pictures(art, out, copied(coverage, known), known);
   const docs = [...documents(coverage), ...archive.retiredReadmes];
   [...new Set(docs)].forEach((path) => copy(art, out, path));
   const look: Look = (file) => {

@@ -51,9 +51,6 @@ const SCRIPTS = ["wiring.ts", "mapping.ts"];
 const POSES = "poses.json";
 const MOODS = "tests/fixtures/streak_moods.json";
 
-/** Server's old pose list: only its launcher icons and moment pictures are read, which Art's list does not have. */
-const SERVER_POSES = "tests/fixtures/companion_poses.json";
-
 /**
  * The wiring map at the repository root, served as plain files at the site
  * root so agents can fetch them: the data (written by src/wiring.ts), its
@@ -266,7 +263,7 @@ export function build(server: string, art: string, out: string, coverageFile?: s
   writeFileSync(join(out, WIRING_PAGE), wiringPage(readFileSync(join(site, WIRING_PAGE), "utf8"), readFileSync(join(site, "..", "wiring.mmd"), "utf8")));
 
   // The mapping tool: every slot by every companion, and every picture of Art.
-  const poses = poseList(art, server);
+  const poses = poseList(art);
   const moods = JSON.parse(readFileSync(join(server, MOODS), "utf8"));
   const mapping = mappingData(data, shown, (file) => statSync(join(art, file)).size, coverage.companions, poses, moods, artCommit(art));
   writeFileSync(join(out, "mapping.json"), JSON.stringify(mapping));
@@ -280,22 +277,9 @@ export function build(server: string, art: string, out: string, coverageFile?: s
   console.log(`${coverage.companions.length} companions, ${shown.size} pictures (${archive.retired.length} retired), into ${out}`);
 }
 
-/**
- * The mapping tool's pose list: the poses and their fallbacks from Art's
- * poses.json, and the launcher icons and moment pictures from Server's
- * fixture while Art's list does not have them (none when Server's has
- * none either).
- */
-export function poseList(art: string, server: string): PoseList {
-  const poses = JSON.parse(readFileSync(join(art, POSES), "utf8")) as Partial<PoseList>;
-  const old = existsSync(join(server, SERVER_POSES)) ? (JSON.parse(readFileSync(join(server, SERVER_POSES), "utf8")) as Partial<PoseList>) : {};
-  return {
-    core: poses.core ?? [],
-    extensions: poses.extensions ?? {},
-    core_fallbacks: poses.core_fallbacks ?? {},
-    pictures: poses.pictures ?? old.pictures ?? {},
-    icons: poses.icons ?? old.icons ?? {},
-  };
+/** The mapping tool's pose list: Art's poses.json. */
+export function poseList(art: string): PoseList {
+  return JSON.parse(readFileSync(join(art, POSES), "utf8")) as PoseList;
 }
 
 // Run when called as a script, not when imported by the tests.

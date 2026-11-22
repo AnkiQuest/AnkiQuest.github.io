@@ -34,7 +34,7 @@ import { MONO, NOTES, slots, type MoodList, type PoseList } from "./slots.ts";
 const read = (path: string) => JSON.parse(readFileSync(new URL(`../server/tests/fixtures/${path}`, import.meta.url), "utf8"));
 
 /** The pose list as build.ts reads it from the submodules. */
-const pinnedPoses = () => poseList(fileURLToPath(new URL("../art", import.meta.url)), fileURLToPath(new URL("../server", import.meta.url)));
+const pinnedPoses = () => poseList(fileURLToPath(new URL("../art", import.meta.url)));
 
 /** A small pose list. */
 const POSES: PoseList = {
@@ -175,7 +175,7 @@ test("a core mood with a core fallback shows it while undrawn", () => {
   assert.deepEqual(resolve(d, mapping, "aki", "happy"), { status: "missing" });
 });
 
-test("Art's pose list: happy and streak fall back to hopeful; icons and pictures still come from Server", () => {
+test("Art's pose list: happy and streak fall back to hopeful; icons and pictures are in it too", () => {
   const poses = pinnedPoses();
   const by = new Map(slots(poses, read("streak_moods.json")).map((slot) => [slot.name, slot]));
   assert.equal(by.get("happy")?.fallback, "hopeful");

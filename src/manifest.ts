@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import type { Companion, Coverage } from "./coverage.ts";
+import type { Cell, Companion, Coverage } from "./coverage.ts";
 
 /** Art's record of every master, the shared pictures and the archive. */
 const MANIFEST = "manifest.json";
@@ -231,13 +231,11 @@ export function localize(
   }
 
   const items = new Set(coverage.items.map((item) => item.name));
+  const fallbackOf = new Map(coverage.items.map((item) => [item.name, item.fallback]));
+  const coreKinds = new Set(coverage.kinds.filter((kind) => kind.core).map((kind) => kind.kind));
   const companions = coverage.companions.map((companion): Companion => {
     const masters = data.masters.filter((entry) => entry.companion === companion.id);
-    const find = (pose: string, file: string) => {
-      const found = masters.find((entry) => entry.pose === pose)?.file ?? same(file);
-      if (found === undefined) {
-        throw new Error(`${companion.id} ${pose} shows ${file}, which is not in AnkiQuest-Art; bump the art or server submodule`);
-      }
+    const check = (found: string) => {
       const spdx = coverage.licences[companion.licence]?.spdx;
       const picture = known.get(found);
       if (picture === undefined || picture.licence !== spdx) {
@@ -245,19 +243,35 @@ export function localize(
       }
       return found;
     };
+
+    // Art decides what is drawn: an item Server shows but Art has no master
+    // for (an icon Server still uses as a pose, say) is not drawn, and
+    // shows its fallback or nothing (hill, 2026-11-21). The file of a
+    // fallback cell stays Server's: the gallery does not show it.
+    const missing = { core: [...companion.missing.core], extensions: [...companion.missing.extensions] };
+    const cells = companion.items.map((cell): Cell => {
+      if (cell.status !== "present") {
+        return cell;
+      }
+      const master = masters.find((entry) => entry.pose === cell.name)?.file;
+      if (master !== undefined) {
+        return { ...cell, file: check(master) };
+      }
+      if (same(cell.file) === undefined) {
+        throw new Error(`${companion.id} ${cell.name} shows ${cell.file}, which is not in AnkiQuest-Art; bump the art or server submodule`);
+      }
+      (coreKinds.has(cell.kind) ? missing.core : missing.extensions).push(cell.name);
+      const fallback = fallbackOf.get(cell.name) ?? null;
+      return fallback === null
+        ? { name: cell.name, kind: cell.kind, status: "missing" }
+        : { name: cell.name, kind: cell.kind, status: "fallback", shows: fallback, file: cell.file };
+    });
+
     return {
       ...companion,
       folder: folder(companion.id),
-      items: companion.items.map((cell) => {
-        switch (cell.status) {
-          case "present":
-            return { ...cell, file: find(cell.name, cell.file) };
-          case "fallback":
-            return { ...cell, file: find(cell.shows, cell.file) };
-          case "missing":
-            return cell;
-        }
-      }),
+      items: cells,
+      missing,
       unlisted: masters.filter((entry) => !items.has(entry.pose)).map((entry) => entry.file).sort(),
     };
   });

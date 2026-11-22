@@ -98,7 +98,8 @@ export function files(coverage: Coverage): string[] {
   const found = new Set<string>();
   for (const companion of coverage.companions) {
     for (const cell of companion.items) {
-      if (cell.status !== "missing") {
+      // Only drawn items: the gallery shows no fallback picture.
+      if (cell.status === "present") {
         found.add(cell.file);
       }
     }

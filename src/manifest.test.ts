@@ -210,7 +210,7 @@ test("pictures: a pack file kept in the pack folder and as a master fails", () =
   }
 });
 
-test("localize: cells show Art masters, by pose or by bytes; Art's unlisted pictures and licences", () => {
+test("localize: cells show Art masters by pose; a picture Art keeps for another pose is not drawn", () => {
   const data = manifest();
   const art = checkout(data);
   try {
@@ -218,12 +218,16 @@ test("localize: cells show Art masters, by pose or by bytes; Art's unlisted pict
     const [aki, tan, chibi] = out.companions;
     assert.equal(aki.folder, "aki");
     assert.deepEqual(aki.items[0], { name: "face", kind: "core_mood", status: "present", file: "aki/face.png" });
-    assert.deepEqual(aki.items[1], { name: "happy", kind: "core_mood", status: "fallback", shows: "face", file: "aki/face.png" });
+    // A fallback cell keeps Server's path: the gallery shows no fallback picture.
+    assert.deepEqual(aki.items[1], { name: "happy", kind: "core_mood", status: "fallback", shows: "face", file: "static/aki/face.png" });
     assert.deepEqual(aki.unlisted, ["aki/study.png"]);
+    // Server's Anki-tan face is the chibi's face in Art: missing for her.
+    assert.deepEqual(tan.items[0], { name: "face", kind: "core_mood", status: "missing" });
     assert.deepEqual(
-      tan.items.map((cell) => (cell.status === "missing" ? undefined : cell.file)),
-      ["anki-tan/chibi/face.png", "anki-tan/happy.png", "anki-tan/sad.png"],
+      tan.items.slice(1).map((cell) => (cell.status === "present" ? cell.file : undefined)),
+      ["anki-tan/happy.png", "anki-tan/sad.png"],
     );
+    assert.deepEqual(tan.missing, { core: ["face"], extensions: [] });
     assert.equal(chibi.folder, "anki-tan/chibi");
     assert.equal(out.licences["anki-tan"].file, "anki-tan/LICENSE");
     assert.equal(out.licences.repository.file, "LICENSE");

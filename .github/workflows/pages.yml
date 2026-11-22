@@ -5,19 +5,38 @@
 # Dependabot opens the submodule bumps.
 name: pages
 
+# Docs-only changes to this repository skip the run: the build reads src/,
+# site/, the wiring files and the submodules (whose READMEs and licences reach
+# the site through a submodule bump, which is not a docs path), never this
+# repository's own Markdown or licence. Plain path filters suffice, since
+# nothing here is a required check or runs in a merge queue.
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE*"
+      - "LICENSES/**"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "LICENSE*"
+      - "LICENSES/**"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# One deployment at a time; a newer run waits instead of cancelling.
+# Pull requests: a newer push replaces the older run. Deployments (push and
+# manual runs): one at a time and never cancelled; a newer one waits, and
+# GitHub drops a superseded waiting one.
 concurrency:
-  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:

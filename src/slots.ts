@@ -1,5 +1,6 @@
 // The slots of the mapping page: every pose, launcher icon and picture a
-// companion can have, from AnkiQuest-Server's companion_poses.json, plus
+// companion can have, from AnkiQuest-Art's poses.json (launcher icons and
+// pictures still from AnkiQuest-Server's companion_poses.json), plus
 // the monochrome launcher icon the Server's exporter makes
 // (crates/xtask/src/art.rs), each with a plain-words note on where the apps
 // show it. The streak moods that show each pose come from
@@ -8,10 +9,12 @@
 
 import type { Framing, MasterKind, Slot, SlotGroup } from "./mapping-model.ts";
 
-/** companion_poses.json: core moods in order, then items by group, each with its fallback. */
+/** poses.json: core moods in order, then items by group, each with its fallback. */
 export interface PoseList {
   core: string[];
   extensions: Record<string, string>;
+  /** The core mood a companion without a core mood's master shows, until every live companion has it drawn. */
+  core_fallbacks?: Record<string, string>;
   pictures: Record<string, string>;
   icons: Record<string, string>;
 }
@@ -150,7 +153,7 @@ function kindOf(group: SlotGroup): MasterKind {
 /** Every slot, grouped and in the fixture's order; fails on a slot without a note. */
 export function slots(poses: PoseList, moods: MoodList): Slot[] {
   const rows: [string, SlotGroup, string | null][] = [
-    ...poses.core.map((name): [string, SlotGroup, null] => [name, "core", null]),
+    ...poses.core.map((name): [string, SlotGroup, string | null] => [name, "core", poses.core_fallbacks?.[name] ?? null]),
     ...Object.entries(poses.extensions).map(([name, fallback]): [string, SlotGroup, string] => [name, "extension", fallback]),
     ...Object.entries(poses.icons).map(([name, fallback]): [string, SlotGroup, string] => [name, "icon", fallback]),
     [MONO, "icon", "face"],

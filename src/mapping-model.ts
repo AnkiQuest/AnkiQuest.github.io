@@ -10,7 +10,7 @@ export type Framing = "full_body" | "bust" | "headshot";
 
 /**
  * The row groups of the mapping grid: the core moods and their extensions
- * from companion_poses.json, the launcher icons (its `icons` plus the
+ * from poses.json, the launcher icons (`icons` plus the
  * monochrome layer the exporter makes) and the moment and notification
  * pictures (its `pictures`).
  */
@@ -21,11 +21,11 @@ export type MasterKind = "core" | "extension" | "picture";
 
 /** One row of the grid: a pose, icon or picture every companion can have. */
 export interface Slot {
-  /** The pose name, as manifest.json and companion_poses.json name it. */
+  /** The pose name, as manifest.json and poses.json name it. */
   name: string;
   group: SlotGroup;
   kind: MasterKind;
-  /** The slot a companion without this one shows instead; null when nothing is shown. */
+  /** The slot a companion without this one shows instead (for a core mood, its core_fallbacks entry); null when nothing is shown. */
   fallback: string | null;
   /** The framing the rule asks for: headshot for the face and launcher icons, full body for the rest. */
   framing: Framing;

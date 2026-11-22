@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   baseline,
@@ -21,7 +22,7 @@ import {
   resolve,
   type Mapping,
 } from "../site/mapping.ts";
-import { copied } from "./build.ts";
+import { copied, poseList } from "./build.ts";
 import type { Coverage } from "./coverage.ts";
 import type { Manifest, Picture } from "./manifest.ts";
 import type { MappingData, MappingPicture } from "./mapping-model.ts";
@@ -29,8 +30,11 @@ import { companionOf, mappingData } from "./mapping.ts";
 import type { Shown } from "./pages.ts";
 import { MONO, NOTES, slots, type MoodList, type PoseList } from "./slots.ts";
 
-/** Server's pose list and streak moods, as the server submodule pins them. */
+/** Server's streak moods, as the server submodule pins them. */
 const read = (path: string) => JSON.parse(readFileSync(new URL(`../server/tests/fixtures/${path}`, import.meta.url), "utf8"));
+
+/** The pose list as build.ts reads it from the submodules. */
+const pinnedPoses = () => poseList(fileURLToPath(new URL("../art", import.meta.url)), fileURLToPath(new URL("../server", import.meta.url)));
 
 /** A small pose list. */
 const POSES: PoseList = {
@@ -97,8 +101,8 @@ function data(): MappingData {
   };
 }
 
-test("every item of Server's pose list is a slot with a note, and the monochrome icon is one too", () => {
-  const poses = read("companion_poses.json") as PoseList;
+test("every item of the pose list is a slot with a note, and the monochrome icon is one too", () => {
+  const poses = pinnedPoses();
   const list = slots(poses, read("streak_moods.json"));
   const names = list.map((slot) => slot.name);
   const items = [...poses.core, ...Object.keys(poses.extensions), ...Object.keys(poses.pictures), ...Object.keys(poses.icons)];
@@ -144,6 +148,43 @@ test("a cell shows its picture, else the first fallback down the chain with one,
   mapping.set(key("aki", "happy"), { state: "missing" });
   assert.deepEqual(resolve(d, mapping, "aki", "happy"), { status: "missing" });
   assert.deepEqual(resolve(d, mapping, "aki", "level_up"), { status: "missing" });
+});
+
+test("a core mood with a core fallback shows it while undrawn", () => {
+  const poses: PoseList = { ...POSES, core: ["face", "happy", "sad", "hopeful"], core_fallbacks: { happy: "hopeful" } };
+  const list = slots(poses, MOODS);
+  const by = new Map(list.map((slot) => [slot.name, slot]));
+  assert.equal(by.get("happy")?.fallback, "hopeful");
+  assert.equal(by.get("hopeful")?.fallback, null);
+  assert.equal(by.get("sad")?.fallback, null);
+
+  const d = { ...data(), slots: list };
+  d.pictures.push(picture("aki/hopeful.png", "aki", "full_body"));
+  const mapping = baseline(d);
+  mapping.set(key("aki", "hopeful"), { state: "picture", file: "aki/hopeful.png" });
+  assert.deepEqual(resolve(d, mapping, "aki", "happy"), { status: "present", file: "aki/happy.png" });
+
+  // Without happy, happy and what falls back to it show hopeful.
+  mapping.set(key("aki", "happy"), { state: "missing" });
+  assert.deepEqual(resolve(d, mapping, "aki", "happy"), { status: "fallback", shows: "hopeful", file: "aki/hopeful.png" });
+  assert.deepEqual(resolve(d, mapping, "aki", "streak_hot"), { status: "fallback", shows: "hopeful", file: "aki/hopeful.png" });
+  assert.deepEqual(resolve(d, mapping, "aki", "level_up"), { status: "fallback", shows: "hopeful", file: "aki/hopeful.png" });
+
+  // Without hopeful either, it shows nothing.
+  mapping.set(key("aki", "hopeful"), { state: "missing" });
+  assert.deepEqual(resolve(d, mapping, "aki", "happy"), { status: "missing" });
+});
+
+test("Art's pose list: happy and streak fall back to hopeful; icons and pictures still come from Server", () => {
+  const poses = pinnedPoses();
+  const by = new Map(slots(poses, read("streak_moods.json")).map((slot) => [slot.name, slot]));
+  assert.equal(by.get("happy")?.fallback, "hopeful");
+  assert.equal(by.get("streak")?.fallback, "hopeful");
+  assert.equal(by.get("hopeful")?.fallback, null);
+  assert.equal(by.get("face")?.fallback, null);
+  assert.equal(by.get("streak_hot")?.fallback, "streak");
+  assert.ok(Object.keys(poses.icons).includes("icon"));
+  assert.ok(Object.keys(poses.pictures).includes("level_up"));
 });
 
 test("framing warns when known and different, never when unknown", () => {

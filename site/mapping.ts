@@ -57,7 +57,7 @@ const DRAFT_VERSION = 1;
 export const GROUPS: Record<SlotGroup, { title: string; note: string }> = {
   core: {
     title: "Core moods",
-    note: "The poses every companion needs. The home screen, the streak widget and the Today panel show one of them for today's streak mood.",
+    note: "The poses every companion needs. The home screen, the streak widget and the Today panel show one of them for today's streak mood. Until every live companion has them drawn, some fall back to another core mood; each row says which.",
   },
   extension: {
     title: "Extension moods",

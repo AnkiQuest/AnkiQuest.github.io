@@ -28,6 +28,7 @@ const MAP: Wiring = redact(
       { id: "AnkiQuest/AnkiQuest-Art", kind: "repo", label: "AnkiQuest-Art", readable: true, planned: true },
       { id: "AnkiQuest/AnkiQuest-Server", kind: "repo", label: "AnkiQuest-Server", readable: true },
       { id: "AnkiQuest/AnkiQuest-Dev", kind: "repo", label: "AnkiQuest-Dev", readable: true },
+      { id: "AnkiQuest/AnkiQuest-Sync", kind: "repo", label: "AnkiQuest-Sync", readable: true },
       { id: "AnkiQuest/AnkiQuest-Hosting", kind: "repo", label: "AnkiQuest-Hosting", readable: true, head: "f".repeat(40) },
       { id: "maven:org.ankiquest", kind: "package", label: "org.ankiquest", readable: true },
     ],
@@ -78,13 +79,16 @@ test("mermaid draws lanes, merged edges, out-of-date and planned edges, and list
   // Lanes as subgraphs, in the page's order, with each node's shape.
   const lanes = [...text.matchAll(/subgraph (lane_\w+)/g)].map((match) => match[1]);
   assert.deepEqual(lanes, ["lane_upstream", "lane_core", "lane_server", "lane_infra"]);
-  assert.match(text, /subgraph lane_upstream\["Upstreams and watched sources"\]\n {4}ankitects_anki\(\["ankitects\/anki"\]\)\n {2}end/);
+  assert.match(text, /subgraph lane_upstream\["Upstreams and watched sources"\]\n {4}subgraph src_ankitects\["ankitects"\]\n {6}ankitects_anki\(\["ankitects\/anki"\]\)\n {4}end\n {2}end/);
   assert.match(text, /AnkiQuest_Anki\[\["AnkiQuest-Anki"\]\]/);
   assert.match(text, /maven_org_ankiquest\{\{"org\.ankiquest \(Maven\)"\}\}/);
   assert.match(text, /AnkiQuest_Art\["AnkiQuest-Art \(planned\)"\]/);
   assert.match(text, /AnkiQuest_Hosting\["AnkiQuest-Hosting \(private\)"\]/);
 
   // Edges: merged, labelled with kinds, pin and commits behind; escaped; planned dotted.
+  // Upstream and watched edges are routed through the sync node.
+  assert.match(text, /ankitects_anki -->\|"sync job"\| AnkiQuest_Sync/);
+  assert.match(text, /AnkiQuest_Sync -->\|"upstream merge: main merged by the sync job, 1111111"\| AnkiQuest_Anki/);
   assert.match(text, /AnkiQuest_Anki -->\|"submodule \+ Cargo pin, acf9fe3, 20 behind"\| AnkiQuest_Android_Backend/);
   assert.match(text, /\|"publishes: a #quot;quoted#quot; #lt;b#gt;#35;1#lt;\/b#gt;, 0\.1\.0"\|/);
   assert.match(text, /AnkiQuest_Art -\.->\|"art release pin: planned"\| AnkiQuest_Server/);

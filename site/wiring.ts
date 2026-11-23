@@ -37,6 +37,9 @@ export const KIND_NAMES: Record<EdgeKind, string> = {
  */
 export const DEFAULT_KINDS: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["upstream", "watched", "submodule", "art", "cargo", "maven", "publishes", "data", "runtime"]);
 
+/** The node every external source AnkiQuest neither forks nor watches is grouped under. */
+export const COLLAPSED = "other-upstream-dependencies";
+
 /** A line style, so kinds differ by more than colour. */
 type LineStyle = "solid" | "dashed" | "dotted";
 
@@ -99,6 +102,8 @@ export interface Filter {
   kinds: Set<EdgeKind>;
   outdated: boolean;
   search: string;
+  /** Minimal view: the grouped unforked upstream dependencies stay hidden. */
+  minimal: boolean;
 }
 
 /** An edge's or a fact's status in words, with the commit count when there is one. */
@@ -133,6 +138,9 @@ export function visibleEdges(map: Wiring, filter: Filter): WiringEdge[] {
       return false;
     }
     if (filter.outdated && edge.status !== "behind") {
+      return false;
+    }
+    if (filter.minimal && (edge.from === COLLAPSED || edge.to === COLLAPSED)) {
       return false;
     }
     if (!search) {
@@ -213,6 +221,8 @@ export const LAYOUT: Record<string, Place> = {
   "KamWithK/AnkiconnectAndroid": { lane: "upstream", x: X.upstream, row: 14.4 },
   "sypianski/garmanki": { lane: "upstream", x: X.upstream, row: 15.6 },
   "ankimcp/ankidroid-mcp": { lane: "upstream", x: X.upstream, row: 16.8 },
+  // Every unforked, unwatched upstream source is grouped under this one node (src/wiring.ts).
+  "other-upstream-dependencies": { lane: "upstream", x: X.upstream, row: 17.6 },
 
   // Core: Anki's core, the backend built from it, and the backend artifacts.
   "AnkiQuest/AnkiQuest-Anki": { lane: "core", x: X.core, row: 4.2 },
@@ -843,6 +853,7 @@ async function main(): Promise<void> {
     kinds: new Set([...document.querySelectorAll<HTMLInputElement>("#kinds input:checked")].map((input) => input.value as EdgeKind)),
     outdated: $<HTMLInputElement>("#outdated").checked,
     search: $<HTMLInputElement>("#search").value,
+    minimal: $<HTMLInputElement>("#minimal").checked,
   });
 
   // Focus: the hovered or chosen node or edge, its neighbours and their lines stay; the rest fades.

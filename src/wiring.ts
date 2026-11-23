@@ -198,6 +198,7 @@ class Collector {
     for (const link of PRIVATE_LINKS) {
       this.edge({ ...link, status: "none" });
     }
+    this.step("collapse unforked upstreams", () => this.collapseUnforked());
 
     const used = new Set(this.edges.flatMap((edge) => [edge.from, edge.to]));
     const map = {
@@ -741,6 +742,32 @@ class Collector {
         }
       }
     }
+  }
+
+  /**
+   * Groups every external source AnkiQuest neither forks nor watches into one
+   * node, so the map shows each such dependency once, under a single node, until
+   * the day one is forked and earns its own node again.
+   */
+  private collapseUnforked(): void {
+    const synced = new Set(this.edges.filter((edge) => edge.kind === "upstream" || edge.kind === "watched").map((edge) => edge.from));
+    const others = [...this.nodes.values()].filter((node) => node.kind === "external" && !synced.has(node.id));
+    if (others.length === 0) {
+      return;
+    }
+    const id = "other-upstream-dependencies";
+    for (const link of this.edges) {
+      if (others.some((node) => node.id === link.from)) {
+        link.from = id;
+      }
+    }
+    for (const node of others) {
+      this.nodes.delete(node.id);
+    }
+    const node = this.node(id, "external", "Other upstream dependencies (not forked)");
+    node.url = undefined;
+    node.readable = false;
+    node.note = "Not forked and not watched: shown grouped under this node until AnkiQuest forks one.";
   }
 
   /** Runtime links, each checked against the file that shows it. */

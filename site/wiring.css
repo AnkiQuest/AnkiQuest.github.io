@@ -13,6 +13,7 @@
   --kind-upstream: #2563eb;
   --kind-watched: #2563eb;
   --kind-submodule: #7c3aed;
+  --kind-art: #0e7490;
   --kind-cargo: #a16207;
   --kind-maven: #0f766e;
   --kind-publishes: #0f766e;
@@ -37,6 +38,7 @@
     --kind-upstream: #60a5fa;
     --kind-watched: #60a5fa;
     --kind-submodule: #a78bfa;
+    --kind-art: #22d3ee;
     --kind-cargo: #facc15;
     --kind-maven: #2dd4bf;
     --kind-publishes: #2dd4bf;

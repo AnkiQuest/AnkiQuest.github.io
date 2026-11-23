@@ -91,14 +91,16 @@ export function redact(map: Wiring, hidden: Set<string>): Wiring {
 
 /**
  * Repositories that are decided but may not exist yet, and the repositories
- * that will take them as a submodule (the art moves to
- * AnkiQuest-Art). Until a repository has commits it shows as planned; each
- * submodule edge shows as planned until the consumer's .gitmodules has it.
+ * that will use them. Until a repository has commits it shows as planned;
+ * each use edge shows as planned until the consumer's pin file has it. Art is
+ * taken as a pinned AnkiQuest-Art release (ankiquest-art.json), never as a
+ * submodule.
  */
-const PLANNED: { row: RepoRow; consumers: string[] }[] = [
+const PLANNED: { row: RepoRow; consumers: string[]; pin: string }[] = [
   {
-    row: { repo: `${ORG}/AnkiQuest-Art`, purpose: "The pose masters and every other companion picture, taken as a submodule by the repositories that need art." },
+    row: { repo: `${ORG}/AnkiQuest-Art`, purpose: "The pose masters and every other companion picture, pinned as a release in each consumer's ankiquest-art.json." },
     consumers: [SERVER, ANDROID, DESKTOP, `${ORG}/AnkiQuest.github.io`],
+    pin: "ankiquest-art.json",
   },
 ];
 
@@ -726,15 +728,17 @@ class Collector {
     }
   }
 
-  /** Planned submodule edges the consumers do not have yet. */
+  /** The use edges of planned repositories: a real pin when the consumer's pin file has it, planned until then. */
   private planned(): void {
     for (const plan of PLANNED) {
       for (const consumer of plan.consumers) {
-        const made = this.edges.some((edge) => edge.kind === "submodule" && edge.from === plan.row.repo && edge.to === consumer);
-        if (made) {
-          continue;
+        const text = this.readable.has(consumer) ? this.clones.read(consumer, plan.pin) : undefined;
+        const tag = text === undefined ? undefined : (JSON.parse(text) as { tag?: string | null }).tag;
+        if (tag) {
+          this.edge({ kind: "art", from: plan.row.repo, to: consumer, label: tag, pinned: tag, status: "current", detail: `pinned in ${plan.pin}`, source: blob(consumer, plan.pin) });
+        } else {
+          this.edge({ kind: "art", from: plan.row.repo, to: consumer, label: "planned", status: "planned", detail: `decided, not in the repository's ${plan.pin} yet` });
         }
-        this.edge({ kind: "submodule", from: plan.row.repo, to: consumer, label: "art (planned)", status: "planned", detail: "decided, not in the repository's .gitmodules yet" });
       }
     }
   }

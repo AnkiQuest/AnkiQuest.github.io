@@ -17,6 +17,7 @@ export const KIND_NAMES: Record<EdgeKind, string> = {
   upstream: "Upstream merges",
   watched: "Watched sources",
   submodule: "Git submodules",
+  art: "Art release pins",
   flake: "Nix flake inputs",
   cargo: "Cargo crates",
   maven: "Maven artifacts",
@@ -34,7 +35,7 @@ export const KIND_NAMES: Record<EdgeKind, string> = {
  * others fan out from one repository to most of the rest; they start off
  * and show as badges on the repositories instead.
  */
-export const DEFAULT_KINDS: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["upstream", "watched", "submodule", "cargo", "maven", "publishes", "data", "runtime"]);
+export const DEFAULT_KINDS: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["upstream", "watched", "submodule", "art", "cargo", "maven", "publishes", "data", "runtime"]);
 
 /** A line style, so kinds differ by more than colour. */
 type LineStyle = "solid" | "dashed" | "dotted";
@@ -44,6 +45,7 @@ export const KIND_LINES: Record<EdgeKind, LineStyle> = {
   upstream: "solid",
   watched: "dashed",
   submodule: "solid",
+  art: "solid",
   flake: "dashed",
   cargo: "solid",
   maven: "solid",
@@ -61,6 +63,7 @@ const KIND_NOUNS: Record<EdgeKind, [string, string]> = {
   upstream: ["upstream", "upstreams"],
   watched: ["watched", "watched"],
   submodule: ["submodule", "submodules"],
+  art: ["art release pin", "art release pins"],
   flake: ["flake", "flakes"],
   cargo: ["crate", "crates"],
   maven: ["artifact", "artifacts"],

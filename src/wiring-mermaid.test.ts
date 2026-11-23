@@ -36,7 +36,7 @@ const MAP: Wiring = redact(
       { kind: "submodule", from: "AnkiQuest/AnkiQuest-Anki", to: "AnkiQuest/AnkiQuest-Android-Backend", label: "anki", pinned: "acf9fe3".padEnd(40, "0"), behind: 20, status: "behind" },
       { kind: "cargo", from: "AnkiQuest/AnkiQuest-Anki", to: "AnkiQuest/AnkiQuest-Android-Backend", label: "crates anki", pinned: "acf9fe3".padEnd(40, "0"), behind: 20, status: "behind" },
       { kind: "publishes", from: "AnkiQuest/AnkiQuest-Android-Backend", to: "maven:org.ankiquest", label: 'a "quoted" <b>#1</b>', pinned: "0.1.0", status: "current" },
-      { kind: "submodule", from: "AnkiQuest/AnkiQuest-Art", to: "AnkiQuest/AnkiQuest-Server", label: "art (planned)", status: "planned" },
+      { kind: "art", from: "AnkiQuest/AnkiQuest-Art", to: "AnkiQuest/AnkiQuest-Server", label: "planned", status: "planned" },
       { kind: "flake", from: "AnkiQuest/AnkiQuest-Dev", to: "AnkiQuest/AnkiQuest-Server", label: "ankiquest-dev", pinned: "2".repeat(40), behind: 3, status: "behind" },
       { kind: "workflow", from: "AnkiQuest/AnkiQuest-Dev", to: "AnkiQuest/AnkiQuest-Hosting", label: "hosting.yml@master", pinned: "9".repeat(40), status: "current", source: "https://github.com/AnkiQuest/AnkiQuest-Hosting/blob/HEAD/secret.yml" },
     ]),
@@ -87,7 +87,7 @@ test("mermaid draws lanes, merged edges, out-of-date and planned edges, and list
   // Edges: merged, labelled with kinds, pin and commits behind; escaped; planned dotted.
   assert.match(text, /AnkiQuest_Anki -->\|"submodule \+ Cargo pin, acf9fe3, 20 behind"\| AnkiQuest_Android_Backend/);
   assert.match(text, /\|"publishes: a #quot;quoted#quot; #lt;b#gt;#35;1#lt;\/b#gt;, 0\.1\.0"\|/);
-  assert.match(text, /AnkiQuest_Art -\.->\|"submodule: art \(planned\)"\| AnkiQuest_Server/);
+  assert.match(text, /AnkiQuest_Art -\.->\|"art release pin: planned"\| AnkiQuest_Server/);
   const drawn = [...text.matchAll(/^ {2}\w+ -\.?->\|"([^"]*)"\|/gm)].map((match) => match[1]);
   const behind = drawn.flatMap((label, index) => (label.includes("behind") ? [index] : []));
   assert.match(text, new RegExp(`linkStyle ${behind.join(",")} stroke:`));

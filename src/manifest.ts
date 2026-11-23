@@ -4,10 +4,10 @@
 // author and licence, the pictures several companions share, and the
 // archive: retired pictures and the rest of Shigeyuki's pack.
 //
-// The art matrix from AnkiQuest-Server decides what each companion shows;
-// this file finds each shown picture in the Art checkout so every card can
-// credit it. A picture in Art the manifest does not list, or a licence the
-// gallery does not know, fails the build.
+// The art matrix (src/matrix.ts, or trusted from a file) decides what each
+// companion shows; this file finds each shown picture in the Art checkout
+// so every card can credit it. A picture in Art the manifest does not
+// list, or a licence the gallery does not know, fails the build.
 
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";

@@ -1,8 +1,8 @@
 // Builds the gallery from an AnkiQuest-Server and an AnkiQuest-Art checkout:
 //   node src/build.ts <server-checkout> <art-checkout> <out-dir> [coverage.json]
-// Reads the art matrix from `xtask art-coverage --json` (run in the Server
-// checkout, or read from coverage.json when given) and who made each
-// picture from Art's manifest.json. Finds every picture the matrix shows in
+// Builds the art matrix from the pinned data alone (src/matrix.ts), or reads
+// it from coverage.json when given, and who made each picture from Art's
+// manifest.json. Finds every picture the matrix shows in
 // Art, copies it and the licences and READMEs byte for byte under
 // files/<Art path>, makes two WebP previews of each picture (matrix and card
 // size) and writes the matrix, a page per companion and the archive
@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { documents, files, parse, type Coverage } from "./coverage.ts";
 import { hash, localize, packUsed, pictures as artPictures, readManifest, type Manifest, type Picture } from "./manifest.ts";
 import { mappingData } from "./mapping.ts";
+import { matrix } from "./matrix.ts";
 import type { PoseList } from "./slots.ts";
 import {
   archivePage,
@@ -58,9 +59,6 @@ const MOODS = "tests/fixtures/streak_moods.json";
  */
 const WIRING_FILES = ["wiring.json", "wiring.mmd", "wiring.svg", "wiring-dark.svg"];
 
-/** The command, run in the checkout, that prints the art matrix. */
-const COVERAGE_COMMAND = ["run", "-q", "-p", "ankiquest-xtask", "--", "art-coverage", "--json"];
-
 /** Folder on the site for the previews, laid out as the checkout. */
 const PREVIEWS = "previews";
 
@@ -97,22 +95,6 @@ export function previewSize(width: number, height: number, max: number): [number
     return [width, height];
   }
   return [max, Math.round((height * max) / width)];
-}
-
-/** The art matrix: from `coverage` when given, else from the checkout. */
-function readCoverage(server: string, coverage?: string): Coverage {
-  if (coverage !== undefined) {
-    return parse(readFileSync(coverage, "utf8"));
-  }
-  try {
-    const text = execFileSync("cargo", COVERAGE_COMMAND, { cwd: server, encoding: "utf8", maxBuffer: 64 << 20 });
-    return parse(text);
-  } catch (error) {
-    throw new Error(
-      `cargo ${COVERAGE_COMMAND.join(" ")} failed in ${server}. The gallery needs AnkiQuest-Server with ` +
-        `art-coverage --json (AnkiQuest-Server#118). ${error}`,
-    );
-  }
 }
 
 /** Writes a WebP preview of `master`, at most `max` wide, and returns it. */
@@ -223,7 +205,9 @@ export function copied(coverage: Coverage, known: Map<string, Picture>): string[
 export function build(server: string, art: string, out: string, coverageFile?: string): void {
   const data = readManifest(art);
   const known = artPictures(art, data);
-  const coverage = localize(readCoverage(server, coverageFile), data, known, sameBytes(server, art, known));
+  const coverage = coverageFile !== undefined
+    ? localize(parse(readFileSync(coverageFile, "utf8")), data, known, sameBytes(server, art, known))
+    : matrix(art, server);
   const archive = artArchive(art, data);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });

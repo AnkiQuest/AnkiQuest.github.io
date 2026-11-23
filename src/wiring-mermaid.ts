@@ -11,7 +11,9 @@
 // the kinds the page draws by default; the fan-out kinds (flake inputs,
 // reusable workflows, CI checkouts, vendored code, AGENTS.md) are listed at
 // the end as comments. Private repositories are already redacted in
-// wiring.json and appear the same way here.
+// wiring.json and appear the same way here. Upstream and watched edges are
+// routed through the AnkiQuest-Sync node, which opens the pull requests that
+// carry them, and the upstream lane groups its sources by owner.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -138,7 +140,8 @@ export function mermaid(map: Wiring): string {
     "flowchart LR",
   ];
 
-  // One subgraph per lane, nodes top to bottom as on the page.
+  // One subgraph per lane, nodes top to bottom as on the page. The upstream
+  // lane groups its sources by owner in nested subgraphs.
   const lanes = Object.keys(LANES) as Lane[];
   for (const lane of lanes) {
     const members = map.nodes
@@ -152,19 +155,57 @@ export function mermaid(map: Wiring): string {
       continue;
     }
     out.push(`  subgraph lane_${lane}["${escape(LANES[lane])}"]`);
-    for (const node of members) {
-      out.push(`    ${nodeLine(node, ids.get(node.id)!)}`);
+    if (lane === "upstream") {
+      const owners = new Map<string, WiringNode[]>();
+      const rest: WiringNode[] = [];
+      for (const node of members) {
+        if (node.kind === "external" && node.id.includes("/")) {
+          const owner = node.id.split("/")[0];
+          owners.set(owner, [...(owners.get(owner) ?? []), node]);
+        } else {
+          rest.push(node);
+        }
+      }
+      const sorted = [...owners.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      if (members.some((node) => node.kind === "external" && !node.id.includes("/"))) {
+        sorted.push(["other", members.filter((node) => node.kind === "external" && !node.id.includes("/"))]);
+      }
+      for (const [owner, group] of sorted) {
+        out.push(`    subgraph src_${owner.replaceAll(/[^a-zA-Z0-9]/g, "_")}["${escape(owner)}"]`);
+        for (const node of group) {
+          out.push(`      ${nodeLine(node, ids.get(node.id)!)}`);
+        }
+        out.push("    end");
+      }
+      for (const node of rest) {
+        out.push(`    ${nodeLine(node, ids.get(node.id)!)}`);
+      }
+    } else {
+      for (const node of members) {
+        out.push(`    ${nodeLine(node, ids.get(node.id)!)}`);
+      }
     }
     out.push("  end");
   }
 
-  // The edges, then the styles that refer to them by position.
+  // The edges, then the styles that refer to them by position. Upstream and
+  // watched edges go through the sync node: the sync job opens the pull
+  // request, the fork merges it.
+  const syncId = ids.get("AnkiQuest/AnkiQuest-Sync");
   out.push("");
+  const lines: { text: string; behind: boolean }[] = [];
   for (const edge of drawn) {
     const arrow = edge.status === "planned" ? "-.->" : "-->";
-    out.push(`  ${ids.get(edge.from)} ${arrow}|"${escape(edge.label)}"| ${ids.get(edge.to)}`);
+    const routed = edge.kinds.includes("upstream") || edge.kinds.includes("watched");
+    if (syncId && routed) {
+      lines.push({ text: `  ${ids.get(edge.from)} -->|"sync job"| ${syncId}`, behind: false });
+      lines.push({ text: `  ${syncId} ${arrow}|"${escape(edge.label)}"| ${ids.get(edge.to)}`, behind: edge.status === "behind" });
+    } else {
+      lines.push({ text: `  ${ids.get(edge.from)} ${arrow}|"${escape(edge.label)}"| ${ids.get(edge.to)}`, behind: edge.status === "behind" });
+    }
   }
-  const behind = drawn.flatMap((edge, index) => (edge.status === "behind" ? [index] : []));
+  out.push(...lines.map((line) => line.text));
+  const behind = lines.flatMap((line, index) => (line.behind ? [index] : []));
   if (behind.length > 0) {
     out.push(`  linkStyle ${behind.join(",")} stroke:${BEHIND_COLOUR},stroke-width:3px`);
   }

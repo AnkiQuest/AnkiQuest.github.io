@@ -282,7 +282,7 @@ const MAP: Wiring = {
   edges: merge([
     { kind: "flake", from: "AnkiQuest/AnkiQuest-Dev", to: "AnkiQuest/AnkiQuest-Server", label: "ankiquest-dev", behind: 4, status: "behind" },
     { kind: "workflow", from: "AnkiQuest/AnkiQuest-Dev", to: "AnkiQuest/AnkiQuest-Server", label: "labels.yml@master", status: "current" },
-    { kind: "submodule", from: "AnkiQuest/AnkiQuest-Art", to: "AnkiQuest/AnkiQuest-Server", label: "art (planned)", status: "planned" },
+    { kind: "art", from: "AnkiQuest/AnkiQuest-Art", to: "AnkiQuest/AnkiQuest-Server", label: "planned", status: "planned" },
   ]),
 };
 
@@ -331,15 +331,15 @@ test("merge makes one edge per pair of nodes, keeping each fact", () => {
 });
 
 test("visibleEdges shows a merged edge when any of its kinds is shown, and filters by status and search text", () => {
-  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: false, search: "" }).length, 2);
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "art"]), outdated: false, search: "" }).length, 2);
   assert.equal(visibleEdges(MAP, { kinds: new Set(["workflow"]), outdated: false, search: "" }).length, 1, "the Dev edge shows for its workflow alone");
-  assert.equal(visibleEdges(MAP, { kinds: new Set(["submodule"]), outdated: false, search: "" }).length, 1);
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["art"]), outdated: false, search: "" }).length, 1);
   assert.deepEqual(
-    visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: true, search: "" }).map((edge) => edge.kinds),
+    visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "art"]), outdated: true, search: "" }).map((edge) => edge.kinds),
     [["flake", "workflow"]],
   );
-  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: false, search: "art" }).length, 1);
-  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "submodule"]), outdated: false, search: "labels.yml" }).length, 1, "fact labels are searched");
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "art"]), outdated: false, search: "art" }).length, 1);
+  assert.equal(visibleEdges(MAP, { kinds: new Set(["flake", "workflow", "art"]), outdated: false, search: "labels.yml" }).length, 1, "fact labels are searched");
   assert.ok(matches(MAP.nodes[1], "server"));
   assert.ok(!matches(MAP.nodes[1], "android"));
 });
@@ -350,7 +350,7 @@ test("lines draws one line per edge in its first shown kind, with its worst stat
     lines(MAP.edges, new Set(all)).map((line) => [line.kind, line.status, line.mark]),
     [
       ["flake", "behind", "! 4"],
-      ["submodule", "planned", "~"],
+      ["art", "planned", "~"],
     ],
   );
   assert.equal(lines(MAP.edges, new Set(["workflow"]))[0].kind, "workflow");

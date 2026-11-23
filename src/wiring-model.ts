@@ -10,6 +10,7 @@ export type EdgeKind =
   | "upstream"
   | "watched"
   | "submodule"
+  | "art"
   | "flake"
   | "cargo"
   | "maven"
@@ -26,6 +27,7 @@ export const EDGE_KINDS: EdgeKind[] = [
   "upstream",
   "watched",
   "submodule",
+  "art",
   "flake",
   "cargo",
   "maven",
@@ -66,6 +68,7 @@ export const KIND_LABELS: Record<EdgeKind, string> = {
   upstream: "upstream merge",
   watched: "watched",
   submodule: "submodule",
+  art: "art release pin",
   flake: "flake input",
   cargo: "Cargo pin",
   maven: "Maven",

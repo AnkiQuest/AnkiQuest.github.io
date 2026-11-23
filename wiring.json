@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-22T13:22:04.800Z",
+  "generated": "2026-11-23T15:23:28.462Z",
   "nodes": [
     {
       "id": "AnkiQuest/AnkiQuest-Server",
@@ -9,7 +9,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Server",
       "purpose": "The server (Rust), its web pages (TypeScript), the API examples, the shared fixtures and the pose masters.",
       "private": false,
-      "head": "23f025ed4a5c8fae7c5d9c55f0d70be1a07dddb8"
+      "head": "bc3acc9402ba9384b55da23eab3c848b00a3db04"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Desktop",
@@ -19,7 +19,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Desktop",
       "purpose": "The Anki desktop add-on (Python).",
       "private": false,
-      "head": "a7bfc7284af9a669b50e43aba5a876c29d91546e"
+      "head": "65beedc87e611da58379783fac2d8ee3d17d300a"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Android",
@@ -29,7 +29,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Android",
       "purpose": "The Android app (Kotlin): AnkiDroid with AnkiQuest added, and AnkiQuest Lite for stock AnkiDroid users (coming).",
       "private": false,
-      "head": "76bce30efdbf034930501e2b60ca37376cf6977a"
+      "head": "8ee6c044caf483fb917abf33015ac2aca8fabfbc"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Anki",
@@ -39,7 +39,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Anki",
       "purpose": "Anki's core for the Android app: upstream plus RWKV and FSRS-7.",
       "private": false,
-      "head": "ad16f59279c742d3f4533c314b83a641c13c78c3"
+      "head": "3827b8eeb87c31bce5c39f64c0a16d6fd70b9968"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Android-Backend",
@@ -49,7 +49,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Android-Backend",
       "purpose": "The app's Rust backend, built from AnkiQuest-Anki; published to Maven Central.",
       "private": false,
-      "head": "e6e15834635888145c71d99cf06eef72e2de431c"
+      "head": "d53291c22173417ad17d665167f53253f5bb085d"
     },
     {
       "id": "AnkiQuest/AnkiQuest-GarmAnki",
@@ -59,7 +59,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-GarmAnki",
       "purpose": "Garmin watch app and its Android companion.",
       "private": false,
-      "head": "902497f121edfb65d72fd5892e2bef1f431385be"
+      "head": "da86851da3e65d577ce38576049f3218e1eca971"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Android-MCP",
@@ -69,7 +69,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Android-MCP",
       "purpose": "MCP server on Android for AnkiDroid and AnkiQuest.",
       "private": false,
-      "head": "0a648b8771e9939f347d1df0cd4fa2befa7c6dec"
+      "head": "918fe06d71e7b5dc4f7278148b187b5099a4f113"
     },
     {
       "id": "AnkiQuest/AnkiQuest-AnkiConnectAndroid",
@@ -79,7 +79,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-AnkiConnectAndroid",
       "purpose": "AnkiConnect on Android for AnkiDroid and AnkiQuest.",
       "private": false,
-      "head": "be1b8f38602d851820e8f68de6a84bbac60d7347"
+      "head": "8a243555aeca5434abf9d2d0aa7f109934aae48f"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Dev",
@@ -128,7 +128,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest.github.io",
       "purpose": "The art gallery (coming).",
       "private": false,
-      "head": "c1e9ccb6553a5c70bcba2ea61e7aa1b30b9e0995"
+      "head": "2361df142fdad14e8c167528b9731ece738fa82e"
     },
     {
       "id": "float3/nixos",
@@ -356,7 +356,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Server/blob/HEAD/.github/workflows/ankiquest_labels.yml#L70"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Server/blob/HEAD/.github/workflows/ankiquest_labels.yml#L72"
         },
         {
           "kind": "workflow",
@@ -380,7 +380,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Server/blob/HEAD/.github/workflows/ankiquest_labels.yml#L63"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Server/blob/HEAD/.github/workflows/ankiquest_labels.yml#L65"
         }
       ]
     },
@@ -409,7 +409,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L60"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L59"
         },
         {
           "kind": "workflow",
@@ -425,7 +425,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L71"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L72"
         },
         {
           "kind": "workflow",
@@ -433,7 +433,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L40"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L39"
         },
         {
           "kind": "workflow",
@@ -441,7 +441,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L64"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/.github/workflows/ankiquest_labels.yml#L65"
         }
       ],
       "behind": 3
@@ -454,7 +454,7 @@
         "data",
         "runtime"
       ],
-      "label": "CI checkout + Server data + runtime, e9b89db, 62 behind",
+      "label": "CI checkout + Server data + runtime, e9b89db, 68 behind",
       "status": "behind",
       "facts": [
         {
@@ -467,8 +467,8 @@
           "kind": "data",
           "label": "API examples and shared fixtures",
           "pinned": "e9b89db11d51cebdd4a91db12c4ad6193d6b6601",
-          "latest": "23f025ed4a5c8fae7c5d9c55f0d70be1a07dddb8",
-          "behind": 62,
+          "latest": "bc3acc9402ba9384b55da23eab3c848b00a3db04",
+          "behind": 68,
           "status": "behind",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/tests/ankiquest-server.sha"
         },
@@ -479,7 +479,7 @@
           "source": "https://github.com/AnkiQuest/AnkiQuest-Desktop/blob/HEAD/addon/client.py"
         }
       ],
-      "behind": 62
+      "behind": 68
     },
     {
       "from": "AnkiQuest/AnkiQuest-Dev",
@@ -508,7 +508,7 @@
           "behind": 3,
           "status": "behind",
           "detail": "pinned to a commit",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_lint.yml#L40"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/lint.yml#L40"
         },
         {
           "kind": "workflow",
@@ -516,7 +516,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L51"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L59"
         },
         {
           "kind": "workflow",
@@ -532,7 +532,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L62"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L72"
         },
         {
           "kind": "workflow",
@@ -540,7 +540,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L31"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L39"
         },
         {
           "kind": "workflow",
@@ -556,7 +556,7 @@
           "pinned": "master",
           "status": "current",
           "detail": "follows master",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L55"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_labels.yml#L65"
         }
       ]
     },
@@ -568,21 +568,21 @@
         "data",
         "runtime"
       ],
-      "label": "CI checkout + Server data + runtime, 215db95, 399 behind",
+      "label": "CI checkout + Server data + runtime, 215db95, 405 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "checkout",
           "label": "checked out by ankiquest_api_contract.yml, ankiquest_art_check.yml, ankiquest_bump_server.yml, ankiquest_fixtures.yml",
           "status": "none",
-          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_api_contract.yml#L79"
+          "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/.github/workflows/ankiquest_api_contract.yml#L53"
         },
         {
           "kind": "data",
           "label": "API examples and shared fixtures",
           "pinned": "215db954c8761764c0cead3c3fb9e21bf0f83be4",
-          "latest": "23f025ed4a5c8fae7c5d9c55f0d70be1a07dddb8",
-          "behind": 399,
+          "latest": "bc3acc9402ba9384b55da23eab3c848b00a3db04",
+          "behind": 405,
           "status": "behind",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/AnkiDroid/src/test/resources/ankiquest-server.sha"
         },
@@ -593,7 +593,7 @@
           "source": "https://github.com/AnkiQuest/AnkiQuest-Android/blob/HEAD/AnkiDroid/src/main/java/com/ichi2/anki/ankiquest/AnkiquestAccount.kt"
         }
       ],
-      "behind": 399
+      "behind": 405
     },
     {
       "from": "ankidroid/Anki-Android-Backend",
@@ -834,15 +834,15 @@
         "submodule",
         "cargo"
       ],
-      "label": "submodule + Cargo pin, 561c4c7, 3 behind",
+      "label": "submodule + Cargo pin, 561c4c7, 5 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "submodule",
           "label": "anki",
           "pinned": "561c4c76f7c4faa4f67fb8b888a1857cf793559a",
-          "latest": "ad16f59279c742d3f4533c314b83a641c13c78c3",
-          "behind": 3,
+          "latest": "3827b8eeb87c31bce5c39f64c0a16d6fd70b9968",
+          "behind": 5,
           "status": "behind",
           "detail": "follows master",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Android-Backend/blob/HEAD/.gitmodules"
@@ -851,13 +851,13 @@
           "kind": "cargo",
           "label": "crates anki, anki_i18n, anki_io, anki_process, anki_proto, anki_proto_gen (through the anki submodule)",
           "pinned": "561c4c76f7c4faa4f67fb8b888a1857cf793559a",
-          "latest": "ad16f59279c742d3f4533c314b83a641c13c78c3",
-          "behind": 3,
+          "latest": "3827b8eeb87c31bce5c39f64c0a16d6fd70b9968",
+          "behind": 5,
           "status": "behind",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Android-Backend/blob/HEAD/build_rust/Cargo.toml#L12"
         }
       ],
-      "behind": 3
+      "behind": 5
     },
     {
       "from": "AnkiQuest/AnkiQuest-Dev",
@@ -1226,20 +1226,20 @@
       "kinds": [
         "submodule"
       ],
-      "label": "submodule: server, 443fa2b, 46 behind",
+      "label": "submodule: server, 8ceba27, 86 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "submodule",
           "label": "server",
-          "pinned": "443fa2ba98079a203e81f41564247cfd9fbb8a69",
-          "latest": "23f025ed4a5c8fae7c5d9c55f0d70be1a07dddb8",
-          "behind": 46,
+          "pinned": "8ceba276a5d43a98506d0c47ad3667a259791d2b",
+          "latest": "bc3acc9402ba9384b55da23eab3c848b00a3db04",
+          "behind": 86,
           "status": "behind",
           "source": "https://github.com/AnkiQuest/AnkiQuest.github.io/blob/HEAD/.gitmodules"
         }
       ],
-      "behind": 46
+      "behind": 86
     },
     {
       "from": "AnkiQuest/AnkiQuest-Art",
@@ -1311,21 +1311,21 @@
       "kinds": [
         "upstream"
       ],
-      "label": "upstream merge: main merged by the sync job, bba650f, 38 behind",
+      "label": "upstream merge: main merged by the sync job, bba650f, 43 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "upstream",
           "label": "main merged by the sync job",
           "pinned": "bba650fb181883f180ef755b851518f67358ce15",
-          "latest": "b4fde416913ddbaf5024d8ad45942da6dfa375b6",
-          "behind": 38,
+          "latest": "6f75d304f37f4ff894a922dbf8b8374d9a2846a9",
+          "behind": 43,
           "status": "behind",
-          "detail": "1164 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Android/pull/469",
+          "detail": "1237 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Android/pull/469",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/.github/workflows/sync.yml"
         }
       ],
-      "behind": 38
+      "behind": 43
     },
     {
       "from": "ankitects/anki",
@@ -1333,20 +1333,21 @@
       "kinds": [
         "upstream"
       ],
-      "label": "upstream merge: main merged by the sync job, be56085",
-      "status": "current",
+      "label": "upstream merge: main merged by the sync job, be56085, 3 behind",
+      "status": "behind",
       "facts": [
         {
           "kind": "upstream",
           "label": "main merged by the sync job",
           "pinned": "be56085c32a9d02b506fa880cfa63c756c1779fc",
-          "latest": "be56085c32a9d02b506fa880cfa63c756c1779fc",
-          "behind": 0,
-          "status": "current",
-          "detail": "39 commits of ours on top",
+          "latest": "4177a657d78412e92897025a9da763031ff9e582",
+          "behind": 3,
+          "status": "behind",
+          "detail": "41 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Anki/pull/11",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/.github/workflows/sync.yml"
         }
-      ]
+      ],
+      "behind": 3
     },
     {
       "from": "ankidroid/Anki-Android-Backend",
@@ -1355,17 +1356,17 @@
         "upstream",
         "watched"
       ],
-      "label": "upstream merge + watched, upstream merge 000bfa3; watched 0.1.77-anki26.09.4",
-      "status": "current",
+      "label": "upstream merge + watched, upstream merge 000bfa3, 1 behind; watched 0.1.77-anki26.09.4",
+      "status": "behind",
       "facts": [
         {
           "kind": "upstream",
           "label": "main merged by the sync job",
           "pinned": "000bfa3d3966d183cf2e44c367d988b0c74885a6",
-          "latest": "000bfa3d3966d183cf2e44c367d988b0c74885a6",
-          "behind": 0,
-          "status": "current",
-          "detail": "37 commits of ours on top",
+          "latest": "39dc538754d71d97d8fb1929865d111f0d805d82",
+          "behind": 1,
+          "status": "behind",
+          "detail": "39 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Android-Backend/pull/12",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/.github/workflows/sync.yml"
         },
         {
@@ -1377,7 +1378,8 @@
           "purpose": "a new upstream backend version: merge the sync pull requests in AnkiQuest-Anki and AnkiQuest-Android-Backend, move the submodule, then publish",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/watched.json"
         }
-      ]
+      ],
+      "behind": 1
     },
     {
       "from": "ankidroid/Anki-Android-Backend",
@@ -1414,7 +1416,7 @@
           "latest": "d9f852141ee6ac6dd7ab371b88e292e02825145b",
           "behind": 0,
           "status": "current",
-          "detail": "46 commits of ours on top",
+          "detail": "48 commits of ours on top",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/.github/workflows/sync.yml"
         }
       ]
@@ -1425,20 +1427,21 @@
       "kinds": [
         "upstream"
       ],
-      "label": "upstream merge: main merged by the sync job, c807183",
-      "status": "current",
+      "label": "upstream merge: main merged by the sync job, c807183, 2 behind",
+      "status": "behind",
       "facts": [
         {
           "kind": "upstream",
           "label": "main merged by the sync job",
           "pinned": "c807183b47a84b28cc276e84e2754130665c1771",
-          "latest": "c807183b47a84b28cc276e84e2754130665c1771",
-          "behind": 0,
-          "status": "current",
-          "detail": "37 commits of ours on top",
+          "latest": "e96e6a44d75bf0246ecd72b42edfd419da8cdee1",
+          "behind": 2,
+          "status": "behind",
+          "detail": "39 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Android-MCP/pull/17",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/.github/workflows/sync.yml"
         }
-      ]
+      ],
+      "behind": 2
     },
     {
       "from": "KamWithK/AnkiconnectAndroid",
@@ -1456,7 +1459,7 @@
           "latest": "93ee1a15b5b9ac174c14eb98f96d73b49c95c9e6",
           "behind": 0,
           "status": "current",
-          "detail": "43 commits of ours on top",
+          "detail": "45 commits of ours on top",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/.github/workflows/sync.yml"
         }
       ]
@@ -1467,21 +1470,21 @@
       "kinds": [
         "watched"
       ],
-      "label": "watched: main, ported by hand, 7259f40, 223 behind",
+      "label": "watched: main, ported by hand, 7259f40, 224 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "watched",
           "label": "main, ported by hand",
           "pinned": "7259f40e12c78646da75b548f7129baeef93d4cb",
-          "latest": "609d60db1bf6d72a23889745457c1556a7be6dcd",
-          "behind": 223,
+          "latest": "e9c1b7f6191ee6c302d64c850fd74e0201d6437a",
+          "behind": 224,
           "status": "behind",
           "purpose": "FSRS-7 and the RWKV engine, carried on our master",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/watched.json"
         }
       ],
-      "behind": 223
+      "behind": 224
     },
     {
       "from": "open-spaced-repetition/fsrs-rs",
@@ -1574,16 +1577,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-Server.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-Server/pull/123"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },
@@ -1593,16 +1595,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-Desktop.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-Desktop/pull/422"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },
@@ -1612,16 +1613,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-Android.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-Android/pull/468"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },
@@ -1631,16 +1631,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-Anki.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-Anki/pull/10"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },
@@ -1650,16 +1649,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-Android-Backend.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-Android-Backend/pull/11"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },
@@ -1669,16 +1667,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-GarmAnki.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-GarmAnki/pull/20"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },
@@ -1688,16 +1685,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-Android-MCP.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-Android-MCP/pull/16"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },
@@ -1707,16 +1703,15 @@
       "kinds": [
         "agents"
       ],
-      "label": "AGENTS.md, differs, out of date",
-      "status": "behind",
+      "label": "AGENTS.md, matches",
+      "status": "current",
       "facts": [
         {
           "kind": "agents",
           "label": "AGENTS.md",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Agents/blob/HEAD/repos/AnkiQuest-AnkiConnectAndroid.md",
-          "pinned": "differs",
-          "status": "behind",
-          "detail": "differs from AnkiQuest-Agents; open: https://github.com/AnkiQuest/AnkiQuest-AnkiConnectAndroid/pull/19"
+          "pinned": "matches",
+          "status": "current"
         }
       ]
     },

@@ -1,6 +1,3 @@
 [submodule "server"]
 	path = server
 	url = https://github.com/AnkiQuest/AnkiQuest-Server
-[submodule "art"]
-	path = art
-	url = https://github.com/AnkiQuest/AnkiQuest-Art

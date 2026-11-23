@@ -1,7 +1,7 @@
 version: 2
 updates:
-  # The art and server submodules: a bump brings new pictures or fixtures
-  # into the gallery.
+  # The server submodule: a bump brings new fixtures into the gallery; the
+  # AnkiQuest-Art pin moves through AnkiQuest-Sync, not Dependabot.
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:

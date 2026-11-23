@@ -4,8 +4,10 @@
 // manifest.json, the export in manifest.json's shape and its import, the
 // draft, and the data build.ts writes for the page.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { test } from "node:test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -30,12 +32,20 @@ import type { MappingData, MappingPicture } from "./mapping-model.ts";
 import { companionOf, mappingData } from "./mapping.ts";
 import type { Shown } from "./pages.ts";
 import { MONO, NOTES, slots, type MoodList, type PoseList } from "./slots.ts";
+import { stage } from "./art-release.ts";
 
 /** Server's streak moods, as the server submodule pins them. */
 const read = (path: string) => JSON.parse(readFileSync(new URL(`../server/tests/fixtures/${path}`, import.meta.url), "utf8"));
 
-/** The pose list as build.ts reads it from the submodules. */
-const pinnedPoses = () => poseList(fileURLToPath(new URL("../art", import.meta.url)));
+/** The Art release that ankiquest-art.json pins, staged once for `pinnedPoses`. */
+const PIN = fileURLToPath(new URL("../ankiquest-art.json", import.meta.url));
+const STAGED = join(tmpdir(), `ankiquest-art-${JSON.parse(readFileSync(PIN, "utf8")).tag}`);
+if (!existsSync(join(STAGED, "poses.json"))) {
+  await stage(PIN, STAGED);
+}
+
+/** The pose list as build.ts reads it from the pinned release. */
+const pinnedPoses = () => poseList(STAGED);
 
 /** A small pose list. */
 const POSES: PoseList = {

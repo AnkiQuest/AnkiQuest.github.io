@@ -1,4 +1,5 @@
-// Builds the gallery from an AnkiQuest-Server and an AnkiQuest-Art checkout:
+// Builds the gallery from an AnkiQuest-Server checkout and an AnkiQuest-Art
+// tree (a checkout, or the pinned release staged by src/art-release.ts):
 //   node src/build.ts <server-checkout> <art-checkout> <out-dir> [coverage.json]
 // Builds the art matrix from the pinned data alone (src/matrix.ts), or reads
 // it from coverage.json when given, and who made each picture from Art's
@@ -175,12 +176,20 @@ function artArchive(art: string, data: Manifest): ArtArchive {
   };
 }
 
-/** The commit the Art checkout is on, or null when git cannot tell. */
+/**
+ * The commit the Art checkout is on: git tells for a checkout, and a staged
+ * release records the pin's commit in the file art-release.ts writes.
+ * Null when neither can tell.
+ */
 function artCommit(art: string): string | null {
   try {
     return execFileSync("git", ["-C", art, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
-    return null;
+    try {
+      return readFileSync(join(art, "ankiquest-art-commit"), "utf8").trim() || null;
+    } catch {
+      return null;
+    }
   }
 }
 

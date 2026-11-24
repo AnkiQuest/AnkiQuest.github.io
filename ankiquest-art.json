@@ -1,13 +1,13 @@
 {
   "_about": "The AnkiQuest-Art release this repository uses. AnkiQuest-Sync updates it when Art publishes a release; don't edit it by hand.",
-  "tag": "art-6",
-  "commit": "e27df70ac5d531a91a68737e20ba6ea529dd46d7",
+  "tag": "art-7",
+  "commit": "a76da71f8451ef3b495a163b42b8f94e651a3796",
   "assets": {
-    "android-drawables.zip": "d39f586a972497cc169af28ff9da96b83cc9df86c3c01c8a6071d70fa9acc5c5",
+    "android-drawables.zip": "9cf4978cc6ceeb1e154681a4c85bacdb85016277cd10bfacdf65739873b85b17",
     "addon-art.zip": "5cacce4aefaeb3e7ad0144d7b3375fa1b06dde9ddee9104f7d040dcfca75e528",
-    "masters.zip": "ebcd61f165bf86c8cbb45bfc19e287ce292eacc8d5ee60c37baf330085d1e2c7",
+    "masters.zip": "24d42c4d48673609fa7b6d471eb873f98378638b9277eabc17ecbe5341930161",
     "archive.zip": "9d48eeccb64f497e3e732e055dd94073b6d880ffc58d7aa0bb8f8f33156ef2d9",
-    "manifest.json": "8364ed4b081d18b51592bf504a8c9574c16a69fa253ac9f4e377772f49c58796",
+    "manifest.json": "eb2fc80b98b6c16c88f2676b7fa3d96ba554401406873c9fa88a6214398ecf30",
     "poses.json": "e41766b186c26082fcfff73027dcf37251ca4c748f6efd32f58f6c2247aeac3d"
   }
 }

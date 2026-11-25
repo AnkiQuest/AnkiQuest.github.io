@@ -34,7 +34,7 @@ import type { Shown } from "./pages.ts";
 import { MONO, NOTES, slots, type MoodList, type PoseList } from "./slots.ts";
 import { stage } from "./art-release.ts";
 
-/** Server's streak moods, as the server submodule pins them. */
+/** Server master's streak moods, cloned into server/. */
 const read = (path: string) => JSON.parse(readFileSync(new URL(`../server/tests/fixtures/${path}`, import.meta.url), "utf8"));
 
 /** The Art release that ankiquest-art.json pins, staged once for `pinnedPoses`. */

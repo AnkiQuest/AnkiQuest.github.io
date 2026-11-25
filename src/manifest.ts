@@ -258,7 +258,7 @@ export function localize(
         return { ...cell, file: check(master) };
       }
       if (same(cell.file) === undefined) {
-        throw new Error(`${companion.id} ${cell.name} shows ${cell.file}, which is not in AnkiQuest-Art; bump the art or server submodule`);
+        throw new Error(`${companion.id} ${cell.name} shows ${cell.file}, which is not in AnkiQuest-Art; bump the art pin`);
       }
       (coreKinds.has(cell.kind) ? missing.core : missing.extensions).push(cell.name);
       const fallback = fallbackOf.get(cell.name) ?? null;

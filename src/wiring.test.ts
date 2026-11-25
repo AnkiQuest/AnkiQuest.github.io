@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { pinStatus, redact, short, vendorSource } from "./wiring.ts";
+import { MODULES, RELEASES, pinStatus, redact, short, vendorSource } from "./wiring.ts";
 import { edgeOf, merge, summary } from "./wiring-edges.ts";
 import type { Wiring } from "./wiring-model.ts";
 import {
@@ -34,6 +34,7 @@ import {
   boxSize,
   direction,
   fallbackLane,
+  groupsOf,
   lines,
   mark,
   matches,
@@ -441,6 +442,37 @@ test("places gives nodes missing from LAYOUT a fixed place at the bottom of thei
   assert.ok(first.x > LAYOUT["AnkiQuest/AnkiQuest-Dev"].x && second.x > first.x);
   assert.deepEqual(places(map), at);
   assert.deepEqual(clashes(at), []);
+});
+
+test("a module sits in its repository's lane and box, a release in its publisher's lane", () => {
+  const map: Wiring = {
+    generated: "2026-11-25T00:00:00Z",
+    notes: [],
+    nodes: [
+      { id: "AnkiQuest/AnkiQuest-Android", kind: "fork", label: "AnkiQuest-Android", readable: true },
+      { id: "AnkiQuest/AnkiQuest-Server", kind: "repo", label: "AnkiQuest-Server", readable: true },
+      { id: "module:Example", kind: "module", label: "Example", readable: true, planned: true, partOf: "AnkiQuest/AnkiQuest-Android" },
+      { id: "release:example", kind: "release", label: "example.wasm", readable: true },
+    ],
+    edges: merge([{ kind: "publishes", from: "AnkiQuest/AnkiQuest-Server", to: "release:example", label: "publishes", status: "none" }]),
+  };
+  assert.equal(fallbackLane(map, map.nodes[2]), "clients");
+  assert.equal(fallbackLane(map, map.nodes[3]), "server");
+  assert.deepEqual(groupsOf(map), ["AnkiQuest/AnkiQuest-Android"]);
+  assert.deepEqual(clashes(places(map)), []);
+  assert.deepEqual(groupsOf({ ...map, nodes: map.nodes.filter((node) => node.id !== "AnkiQuest/AnkiQuest-Android") }), []);
+});
+
+test("AnkiQuest Lite is part of AnkiQuest-Android, and the rules module goes from the server to the add-on", () => {
+  const lite = MODULES.find((module) => module.label === "AnkiQuest Lite")!;
+  assert.equal(lite.partOf, "AnkiQuest/AnkiQuest-Android");
+  assert.equal(LAYOUT[lite.id].lane, LAYOUT[lite.partOf].lane);
+  const rules = RELEASES.find((release) => release.kind === "rules")!;
+  assert.equal(rules.publisher, "AnkiQuest/AnkiQuest-Server");
+  assert.deepEqual(rules.consumers, ["AnkiQuest/AnkiQuest-Desktop"]);
+  assert.equal(rules.pin, "ankiquest-rules.json");
+  assert.equal(LAYOUT[rules.id].lane, LAYOUT[rules.publisher].lane);
+  assert.ok(DEFAULT_KINDS.has("rules"));
 });
 
 test("stacked keeps upstreams level with what they feed and stacks the other lanes on the right", () => {

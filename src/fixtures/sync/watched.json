@@ -1,0 +1,64 @@
+[
+  {
+    "source": "JSchoreels/anki",
+    "ref": "main",
+    "kind": "branch",
+    "mode": "merge",
+    "target": "AnkiQuest/AnkiQuest-Anki",
+    "why": "FSRS-7 and the RWKV engine, carried on our master"
+  },
+  {
+    "source": "JSchoreels/fsrs-rs",
+    "ref": "main",
+    "kind": "branch",
+    "mode": "pin",
+    "package": "fsrs",
+    "target": "AnkiQuest/AnkiQuest-Anki",
+    "why": "the fsrs-rs fork FSRS-7 depends on (Cargo.toml pins a commit)"
+  },
+  {
+    "source": "open-spaced-repetition/fsrs-rs",
+    "ref": "main",
+    "kind": "branch",
+    "mode": "port",
+    "target": "AnkiQuest/AnkiQuest-Anki",
+    "why": "upstream of JSchoreels/fsrs-rs; its changes reach us once JSchoreels/fsrs-rs takes them",
+    "reviewed": "9fb03928d8c8fd84f5b9df2b2f6ddc631e6cae81"
+  },
+  {
+    "source": "Pedrubik2000/kuma3-anki-core",
+    "ref": "rwkv",
+    "kind": "branch",
+    "mode": "merge",
+    "target": "AnkiQuest/AnkiQuest-Anki",
+    "why": "kuma3's offline RWKV scheduler, carried on our master"
+  },
+  {
+    "source": "Pedrubik2000/kuma3-anki-backend",
+    "ref": "rwkv",
+    "kind": "branch",
+    "mode": "merge",
+    "target": "AnkiQuest/AnkiQuest-Android-Backend",
+    "why": "kuma3's backend wiring, carried on our master"
+  },
+  {
+    "source": "Pedrubik2000/kuma3-anki-app",
+    "ref": "rwkv",
+    "kind": "branch",
+    "mode": "port",
+    "target": "AnkiQuest/AnkiQuest-Android",
+    "why": "kuma3's app side of RWKV (RwkvOffline.kt, deck options), ported by hand: it is a different app",
+    "reviewed": "617683ad03ac8ae661763ccf98733277f753f3d2"
+  },
+  {
+    "source": "ankidroid/Anki-Android-Backend",
+    "ref": "main",
+    "kind": "version",
+    "file": "gradle.properties",
+    "key": "VERSION_NAME",
+    "mode": "port",
+    "target": "AnkiQuest/AnkiQuest-Android-Backend",
+    "why": "a new upstream backend version: merge the sync pull requests in AnkiQuest-Anki and AnkiQuest-Android-Backend, move the submodule, then publish",
+    "reviewed": "0.1.77-anki26.09.4"
+  }
+]

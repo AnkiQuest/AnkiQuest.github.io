@@ -194,6 +194,15 @@ export function pinStatus(pinned: string | undefined, latest: string | undefined
   return "behind";
 }
 
+/**
+ * Where a copy of the provider contract was taken from: the repository its
+ * header links. Copies taken from our fork link AnkiQuest/AnkiQuest-Android;
+ * anything else is upstream's.
+ */
+export function vendorSource(text: string): string {
+  return /github\.com\/AnkiQuest\/AnkiQuest-Android\//.test(text) ? ANDROID : "ankidroid/Anki-Android";
+}
+
 /** Short form of a commit hash; versions pass unchanged. */
 export function short(value: string | undefined): string | undefined {
   return value !== undefined && /^[0-9a-f]{40}$/.test(value) ? value.slice(0, 10) : value;
@@ -521,10 +530,11 @@ class Collector {
       return;
     }
     for (const file of this.clones.files(repo).filter((path) => /\/FlashCards(Contract)?\.(kt|java)$/.test(path))) {
-      if (!/FlashCardsContract/.test(this.clones.read(repo, file) ?? "")) {
+      const text = this.clones.read(repo, file) ?? "";
+      if (!/FlashCardsContract/.test(text)) {
         continue;
       }
-      this.edge({ kind: "vendored", from: "ankidroid/Anki-Android", to: repo, label: `provider contract copied as ${basename(file)}`, status: "none", source: blob(repo, file) });
+      this.edge({ kind: "vendored", from: vendorSource(text), to: repo, label: `provider contract copied as ${basename(file)}`, status: "none", source: blob(repo, file) });
     }
   }
 

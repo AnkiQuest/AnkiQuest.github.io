@@ -1,13 +1,7 @@
 version: 2
 updates:
-  # The server submodule: a bump brings new fixtures into the gallery; the
-  # AnkiQuest-Art pin moves through AnkiQuest-Sync, not Dependabot.
-  - package-ecosystem: gitsubmodule
-    directory: /
-    schedule:
-      interval: daily
-
-  # flake.lock: AnkiQuest-Dev, which pins the dev shell.
+  # flake.lock: AnkiQuest-Dev, which pins the dev shell. The AnkiQuest-Art
+  # pin moves through AnkiQuest-Sync, not Dependabot.
   - package-ecosystem: nix
     directory: /
     schedule:

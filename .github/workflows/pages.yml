@@ -1,13 +1,13 @@
 # Builds the gallery from the art matrix the site derives itself
-# (src/matrix.ts) from the AnkiQuest-Server commit the `server` submodule
-# pins and the AnkiQuest-Art release ankiquest-art.json pins (staged by
+# (src/matrix.ts) from AnkiQuest-Server master's fixtures and the
+# AnkiQuest-Art release ankiquest-art.json pins (staged by
 # src/art-release.ts, which downloads and hash-checks the assets), and
-# deploys it to GitHub Pages. Pull requests only test and build. Dependabot
-# opens the server submodule bump; AnkiQuest-Sync bumps the Art pin.
+# deploys it to GitHub Pages. Pull requests only test and build. A daily
+# run picks up server changes; AnkiQuest-Sync bumps the Art pin.
 name: pages
 
 # Docs-only changes to this repository skip the run: the build reads src/,
-# site/, the wiring files, the server submodule and the Art pin, never this
+# site/, the wiring files, server master and the Art pin, never this
 # repository's own Markdown or licence. Plain path filters suffice, since
 # nothing here is a required check or runs in a merge queue.
 on:
@@ -26,6 +26,9 @@ on:
       - "LICENSES/**"
       - "docs/**"
       - ".github/ISSUE_TEMPLATE/**"
+  # Server master's fixtures change without a push here.
+  schedule:
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -45,7 +48,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          submodules: true
+      # The fixtures the matrix and the tests read, from server master.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: AnkiQuest/AnkiQuest-Server
+          ref: master
+          path: server
+          persist-credentials: false
+          sparse-checkout: tests/fixtures
       # Node and cwebp come from the dev shell (AnkiQuest-Dev's gallery shell).
       - uses: cachix/install-nix-action@bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
         with:

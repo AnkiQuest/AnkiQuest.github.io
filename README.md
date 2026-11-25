@@ -7,16 +7,17 @@ The gallery at <https://ankiquest.github.io>: the art matrix of every companion 
 
 Anki-tan chibi has her own column and page as a future companion.
 
-What each companion shows comes from the art matrix the site derives itself (`src/matrix.ts`): the items and fallbacks of AnkiQuest-Art's `poses.json`, the masters of its `manifest.json`, and the live and planned companions of the AnkiQuest-Server commit the `server` submodule pins (`tests/fixtures/companion_unlock.json`). `src/manifest.ts` finds each picture the matrix shows in Art and copies it to `files/<Art path>` with its WebP previews. A picture in Art that the manifest does not list, a licence the gallery does not know, or a manifest companion the companion table does not list fails the build. The AnkiQuest-Art release arrives through the `ankiquest-art.json` pin (staged by `src/art-release.ts`, which downloads and hash-checks the assets; AnkiQuest-Sync bumps it), and the AnkiQuest-Server submodule through Dependabot.
+What each companion shows comes from the art matrix the site derives itself (`src/matrix.ts`): the items and fallbacks of AnkiQuest-Art's `poses.json`, the masters of its `manifest.json`, and the live and planned companions of AnkiQuest-Server `master` (`tests/fixtures/companion_unlock.json`, cloned into `server/`). `src/manifest.ts` finds each picture the matrix shows in Art and copies it to `files/<Art path>` with its WebP previews. A picture in Art that the manifest does not list, a licence the gallery does not know, or a manifest companion the companion table does not list fails the build. The AnkiQuest-Art release arrives through the `ankiquest-art.json` pin (staged by `src/art-release.ts`, which downloads and hash-checks the assets; AnkiQuest-Sync bumps it). Server changes reach the site through the `pages` workflow's daily run.
 
 ```sh
-git submodule update --init
+git clone --depth 1 --filter=blob:none --sparse https://github.com/AnkiQuest/AnkiQuest-Server server
+git -C server sparse-checkout set tests/fixtures  # server master's fixtures
 node src/art-release.ts ankiquest-art.json .art   # stage the pinned Art release
-node src/build.ts server .art _site                # from the pinned data
+node src/build.ts server .art _site                # from that data
 node src/build.ts server .art _site coverage.json  # or trusts a matrix JSON
 ```
 
-Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`. `npm test` checks how the JSON and Art's manifest become pages, and the mapping tool. The `pages` workflow builds and deploys on every push to `master`.
+Run it in the dev shell (`nix develop`), which has Node 22 and `cwebp`. `npm test` checks how the JSON and Art's manifest become pages, and the mapping tool. The `pages` workflow builds and deploys on every push to `master` and daily.
 
 ## Mapping tool
 

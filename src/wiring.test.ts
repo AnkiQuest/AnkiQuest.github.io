@@ -469,8 +469,7 @@ test("AnkiQuest Lite is part of AnkiQuest-Android, and the rules module goes fro
   assert.equal(LAYOUT[lite.id].lane, LAYOUT[lite.partOf].lane);
   const rules = RELEASES.find((release) => release.kind === "rules")!;
   assert.equal(rules.publisher, "AnkiQuest/AnkiQuest-Server");
-  assert.deepEqual(rules.consumers, ["AnkiQuest/AnkiQuest-Desktop"]);
-  assert.equal(rules.pin, "ankiquest-rules.json");
+  assert.deepEqual(rules.consumers.map((consumer) => consumer.repo), ["AnkiQuest/AnkiQuest-Desktop"]);
   assert.equal(LAYOUT[rules.id].lane, LAYOUT[rules.publisher].lane);
   assert.ok(DEFAULT_KINDS.has("rules"));
 });

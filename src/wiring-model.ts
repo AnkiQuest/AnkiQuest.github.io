@@ -77,7 +77,7 @@ export const KIND_LABELS: Record<EdgeKind, string> = {
   watched: "watched",
   submodule: "submodule",
   art: "art release pin",
-  rules: "rules release pin",
+  rules: "rules release",
   flake: "flake input",
   cargo: "Cargo pin",
   maven: "Maven",

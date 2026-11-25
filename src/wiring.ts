@@ -125,20 +125,21 @@ export const MODULES: { id: string; label: string; partOf: string; purpose: stri
 ];
 
 /**
- * Release assets a repository publishes for others to pin, and who pins
- * them. The node is planned until the publisher has the file that builds
- * the asset; each use edge until the consumer's pin file names a release.
+ * Release assets a repository publishes, and who takes them. Consumers take
+ * the newest release when they build, without a pin, since they use the
+ * publisher's default branch. The node is planned until the publisher has
+ * the file that builds the asset; each use edge until the consumer has the
+ * file that fetches it.
  */
-export const RELEASES: { id: string; label: string; publisher: string; builtBy: string; purpose: string; kind: EdgeKind; consumers: string[]; pin: string }[] = [
+export const RELEASES: { id: string; label: string; publisher: string; builtBy: string; purpose: string; kind: EdgeKind; consumers: { repo: string; fetchedBy: string }[] }[] = [
   {
     id: "release:ankiquest-rules",
     label: "ankiquest_rules.wasm",
     publisher: SERVER,
     builtBy: "crates/rules-wasm/Cargo.toml",
-    purpose: "The shared rules (crates/rules) as one WebAssembly module, published as rules-<N> releases and pinned in each consumer's ankiquest-rules.json.",
+    purpose: "The shared rules (crates/rules): the WebAssembly module, Python bindings and desktop libraries, published as rules-<N> releases; consumers take the newest when they build.",
     kind: "rules",
-    consumers: [DESKTOP],
-    pin: "ankiquest-rules.json",
+    consumers: [{ repo: DESKTOP, fetchedBy: "tools/package-addon/src/rules.rs" }],
   },
 ];
 
@@ -804,7 +805,7 @@ class Collector {
     }
   }
 
-  /** Release assets: published by their repository, pinned by their consumers. */
+  /** Release assets: published by their repository, taken newest by their consumers. */
   private releases(): void {
     for (const release of RELEASES) {
       const node = this.node(release.id, "release", release.label);
@@ -816,8 +817,13 @@ class Collector {
         node.note = `Planned: ${release.publisher} does not build it yet (${release.builtBy}).`;
       }
       this.edge({ kind: "publishes", from: release.publisher, to: release.id, label: `publishes ${release.label}`, status: built ? "none" : "planned" });
-      for (const consumer of release.consumers) {
-        this.pinned(release.kind, release.id, consumer, release.pin);
+      for (const { repo, fetchedBy } of release.consumers) {
+        const fetches = this.readable.has(repo) && this.clones.read(repo, fetchedBy) !== undefined;
+        if (fetches) {
+          this.edge({ kind: release.kind, from: release.id, to: repo, label: "newest release", status: "none", detail: `fetched by ${fetchedBy}`, source: blob(repo, fetchedBy) });
+          continue;
+        }
+        this.edge({ kind: release.kind, from: release.id, to: repo, label: "planned", status: "planned", detail: `decided, ${fetchedBy} does not exist yet` });
       }
     }
   }

@@ -6,7 +6,7 @@
 #
 # Reads public repositories only. Private ones (AnkiQuest-Hosting,
 # float3/nixos) are never read: the generator declares their links to
-# AnkiQuest repositories and shows nothing else of them (hill, 2026-11-21).
+# AnkiQuest repositories and shows nothing else of them.
 # GITHUB_TOKEN is sent to the GitHub API for its higher rate limit.
 # Pull requests opened with GITHUB_TOKEN start no CI; the checks run once
 # someone pushes to the branch, or on the merge.

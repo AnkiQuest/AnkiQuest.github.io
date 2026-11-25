@@ -1,7 +1,7 @@
 %% AnkiQuest wiring: how every AnkiQuest repository, upstream and package feeds the others.
 %% Generated from wiring.json (written by src/wiring.ts) by src/wiring-mermaid.ts in
 %% AnkiQuest/AnkiQuest.github.io; regenerated daily. Do not edit.
-%% Data of 2026-11-25 (wiring.json generated 2026-11-25T11:12:21.501Z).
+%% Data of 2026-11-25 (wiring.json generated 2026-11-25T15:22:53.920Z).
 %% Interactive page: https://ankiquest.github.io/wiring.html
 %% Arrows point the way code or data flows; one edge per pair of nodes, naming every kind of
 %% link between them ("watched + Cargo pin"), then the pinned commit or version and N behind,
@@ -64,7 +64,7 @@ flowchart LR
   ankidroid_Anki_Android_Backend -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"watched: VERSION_NAME on main, 0.1.77-anki26.09.4"| AnkiQuest_Android_Backend
   JSchoreels_anki -->|"sync job"| AnkiQuest_Sync
-  AnkiQuest_Sync -->|"watched: main, ported by hand, 7259f40, 258 behind"| AnkiQuest_Anki
+  AnkiQuest_Sync -->|"watched: main, ported by hand, 7259f40, 263 behind"| AnkiQuest_Anki
   JSchoreels_fsrs_rs -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"watched + Cargo pin, bd8932b, 14 behind"| AnkiQuest_Anki
   open_spaced_repetition_fsrs_rs -->|"sync job"| AnkiQuest_Sync
@@ -75,17 +75,17 @@ flowchart LR
   AnkiQuest_Sync -->|"watched: rwkv, ported by hand, 51529af"| AnkiQuest_Android_Backend
   Pedrubik2000_kuma3_anki_core -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"watched: rwkv, ported by hand, a8cf880"| AnkiQuest_Anki
-  AnkiQuest_Anki -->|"submodule + Cargo pin, 561c4c7, 30 behind"| AnkiQuest_Android_Backend
+  AnkiQuest_Anki -->|"submodule + Cargo pin, 561c4c7, 32 behind"| AnkiQuest_Android_Backend
   AnkiQuest_Hosting -->|"submodule"| float3_nixos
-  other_upstream_dependencies -->|"submodule (4) + Cargo pin (2), submodule 4992570, 97 behind; submodule 8a58eb9, 28 behind; submodule 57f2b6d; submodule 0c95589; Cargo pin 2c7c081; Cargo pin bb930b8, 108 behind"| AnkiQuest_Anki
-  AnkiQuest_Art -->|"art release pin: art-4, art-4"| AnkiQuest_Android
-  AnkiQuest_Art -->|"art release pin: art-4, art-4"| AnkiQuest_Desktop
+  other_upstream_dependencies -->|"submodule (4) + Cargo pin (2), submodule 4992570, 98 behind; submodule 8a58eb9, 28 behind; submodule 57f2b6d; submodule 0c95589; Cargo pin 2c7c081; Cargo pin bb930b8, 108 behind"| AnkiQuest_Anki
+  AnkiQuest_Art -->|"art release pin: art-9, art-9"| AnkiQuest_Android
+  AnkiQuest_Art -->|"art release pin: art-9, art-9"| AnkiQuest_Desktop
   AnkiQuest_Art -->|"art release pin: art-8, art-8"| AnkiQuest_Server
   AnkiQuest_Art -->|"art release pin: art-9, art-9"| AnkiQuest_github_io
   release_ankiquest_rules -.->|"rules release: planned"| AnkiQuest_Desktop
-  maven_org_ankiquest -->|"Maven: anki-android-backend-testing, anki-backend-android, anki-backend-core, 0.1.77-anki26.09.4-ankiquest.4, out of date, latest 0.1.77-anki26.09.4-ankiquest.3"| AnkiQuest_Android
+  maven_org_ankiquest -->|"Maven: anki-android-backend-testing, anki-backend-android, anki-backend-core, 0.1.77-anki26.09.4-ankiquest.4, unknown"| AnkiQuest_Android
   AnkiQuest_Android -->|"publishes: api, 2.0.0"| maven_com_ichi2_anki
-  AnkiQuest_Android_Backend -->|"publishes: ankiquest-backend-android, ankiquest-android-backend-testing, ankiquest-backend-core, 0.1.77-anki26.09.4-ankiquest.5"| maven_org_ankiquest
+  AnkiQuest_Android_Backend -->|"publishes: ankiquest-backend-android, ankiquest-android-backend-testing, ankiquest-backend-core, 0.1.77-anki26.09.4-ankiquest.5, out of date"| maven_org_ankiquest
   AnkiQuest_Server -.->|"publishes ankiquest_rules.wasm"| release_ankiquest_rules
   AnkiQuest_Android -->|"vendored + runtime, unknown"| AnkiQuest_Android_MCP
   AnkiQuest_Android -->|"vendored + runtime, unknown"| AnkiQuest_GarmAnki
@@ -94,9 +94,9 @@ flowchart LR
   AnkiQuest_Android -->|"runtime: content provider, unknown"| AnkiQuest_AnkiConnectAndroid
   AnkiQuest_Server -.->|"runtime: HTTPS API"| module_AnkiQuest_Lite
   other_upstream_dependencies -.->|"runtime: content provider"| module_AnkiQuest_Lite
-  linkStyle 3,5,7,9,14,16,22,28,29 stroke:#ea580c,stroke-width:3px
+  linkStyle 3,5,7,9,14,16,24,28,29 stroke:#ea580c,stroke-width:3px
   classDef behind stroke:#ea580c,stroke-width:3px
-  class AnkiQuest_Android,AnkiQuest_Android_Backend,AnkiQuest_Anki,AnkiQuest_Desktop behind
+  class AnkiQuest_Android,AnkiQuest_Android_Backend,AnkiQuest_Anki,AnkiQuest_Desktop,maven_org_ankiquest behind
   classDef planned stroke-dasharray:6 4
   class module_AnkiQuest_Lite,release_ankiquest_rules planned
   classDef private stroke-dasharray:2 3
@@ -157,10 +157,10 @@ flowchart LR
 %%   checkout | AnkiQuest/AnkiQuest-Server -> AnkiQuest/AnkiQuest.github.io | checked out by pages.yml | -
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Agents | AGENTS.md | matches
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Android | AGENTS.md | differs, out of date
-%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Android-Backend | AGENTS.md | differs, out of date
+%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Android-Backend | AGENTS.md | matches
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Android-MCP | AGENTS.md | differs, out of date
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Anki | AGENTS.md | differs, out of date
-%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | AGENTS.md | differs, out of date
+%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | AGENTS.md | matches
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Art | AGENTS.md | matches
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Desktop | AGENTS.md | differs, out of date
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Dev | AGENTS.md | matches

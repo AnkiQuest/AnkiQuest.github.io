@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { pinStatus, redact, short } from "./wiring.ts";
+import { pinStatus, redact, short, vendorSource } from "./wiring.ts";
 import { edgeOf, merge, summary } from "./wiring-edges.ts";
 import type { Wiring } from "./wiring-model.ts";
 import {
@@ -492,4 +492,12 @@ test("the committed wiring.json has edges between known nodes", () => {
   for (const fact of map.edges.flatMap((edge) => edge.facts).filter((candidate) => candidate.kind === "watched")) {
     assert.ok(fact.purpose, fact.label);
   }
+});
+
+test("vendorSource names the repository a copied provider contract links", () => {
+  const ours = " * https://github.com/AnkiQuest/AnkiQuest-Android/blob/master/api/src/main/java/com/ichi2/anki/FlashCardsContract.kt";
+  const theirs = " * https://github.com/ankidroid/Anki-Android/blob/main/api/src/main/java/com/ichi2/anki/FlashCardsContract.kt";
+  assert.equal(vendorSource(ours), "AnkiQuest/AnkiQuest-Android");
+  assert.equal(vendorSource(theirs), "ankidroid/Anki-Android");
+  assert.equal(vendorSource("object FlashCardsContract"), "ankidroid/Anki-Android");
 });

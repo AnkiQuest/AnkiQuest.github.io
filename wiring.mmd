@@ -1,7 +1,7 @@
 %% AnkiQuest wiring: how every AnkiQuest repository, upstream and package feeds the others.
 %% Generated from wiring.json (written by src/wiring.ts) by src/wiring-mermaid.ts in
 %% AnkiQuest/AnkiQuest.github.io; regenerated daily. Do not edit.
-%% Data of 2026-11-25 (wiring.json generated 2026-11-25T10:15:58.529Z).
+%% Data of 2026-11-25 (wiring.json generated 2026-11-25T11:12:21.501Z).
 %% Interactive page: https://ankiquest.github.io/wiring.html
 %% Arrows point the way code or data flows; one edge per pair of nodes, naming every kind of
 %% link between them ("watched + Cargo pin"), then the pinned commit or version and N behind,
@@ -81,8 +81,8 @@ flowchart LR
   AnkiQuest_Art -->|"art release pin: art-4, art-4"| AnkiQuest_Android
   AnkiQuest_Art -->|"art release pin: art-4, art-4"| AnkiQuest_Desktop
   AnkiQuest_Art -->|"art release pin: art-8, art-8"| AnkiQuest_Server
-  AnkiQuest_Art -->|"art release pin: art-8, art-8"| AnkiQuest_github_io
-  release_ankiquest_rules -.->|"rules release pin: planned"| AnkiQuest_Desktop
+  AnkiQuest_Art -->|"art release pin: art-9, art-9"| AnkiQuest_github_io
+  release_ankiquest_rules -.->|"rules release: planned"| AnkiQuest_Desktop
   maven_org_ankiquest -->|"Maven: anki-android-backend-testing, anki-backend-android, anki-backend-core, 0.1.77-anki26.09.4-ankiquest.4, out of date, latest 0.1.77-anki26.09.4-ankiquest.3"| AnkiQuest_Android
   AnkiQuest_Android -->|"publishes: api, 2.0.0"| maven_com_ichi2_anki
   AnkiQuest_Android_Backend -->|"publishes: ankiquest-backend-android, ankiquest-android-backend-testing, ankiquest-backend-core, 0.1.77-anki26.09.4-ankiquest.5"| maven_org_ankiquest
@@ -104,47 +104,47 @@ flowchart LR
 
 %% Not drawn, as on the page: edges only of kinds that fan out from one repository to most others.
 %%   kind | from -> to | what | pin (status)
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Agents | ankiquest-dev | 16ac791, 56 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Agents | ankiquest-dev | 16ac791, 58 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Agents | workflows/nix-check.yml@master | master
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | ankiquest-dev | dc3b0eb, 69 behind
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | ankiquest-dev | dc3b0eb, 71 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | actions/conflict-scan@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | workflows/banner.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | workflows/issue-labels.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | workflows/labels.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | workflows/nix-check.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android | workflows/pr-labels.yml@master | master
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-Backend | ankiquest-dev | 16ac791, 56 behind
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-MCP | ankiquest-dev | dc3b0eb, 69 behind
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-MCP | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-Backend | ankiquest-dev | 16ac791, 58 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-MCP | ankiquest-dev | dc3b0eb, 71 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-MCP | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-MCP | workflows/android-ci.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Android-MCP | workflows/android-release.yml@master | master
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Anki | ankiquest-dev | 16ac791, 56 behind
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | ankiquest-dev | dc3b0eb, 69 behind
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Anki | ankiquest-dev | 16ac791, 58 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | ankiquest-dev | dc3b0eb, 71 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | workflows/android-ci.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | workflows/android-release.yml@master | master
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-GarmAnki | ankiquest-dev | dc3b0eb, 69 behind
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-GarmAnki | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-GarmAnki | ankiquest-dev | dc3b0eb, 71 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-GarmAnki | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-GarmAnki | workflows/android-ci.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-GarmAnki | workflows/android-release.yml@master | master
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | ankiquest-dev | dc3b0eb, 69 behind
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | ankiquest-dev | dc3b0eb, 71 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | actions/conflict-scan@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | workflows/banner.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | workflows/issue-labels.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | workflows/labels.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | workflows/nix-check.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Server | workflows/pr-labels.yml@master | master
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Sync | ankiquest-dev | 16ac791, 56 behind
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Sync | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Sync | ankiquest-dev | 16ac791, 58 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Sync | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Sync | workflows/nix-check.yml@master | master
-%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest.github.io | ankiquest-dev | c80cdd8, 35 behind
+%%   flake | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest.github.io | ankiquest-dev | cd577a0, 12 behind
 %%   flake | AnkiQuest/AnkiQuest-Dev -> float3/nixos | flake input | -
 %%   flake | AnkiQuest/AnkiQuest-Server -> float3/nixos | flake input | -
 %%   vendored | other-upstream-dependencies -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | provider contract copied as FlashCardsContract.java | -
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Art | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
-%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Desktop | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 11 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Art | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
+%%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Desktop | actions/code-changed@5ab685e7013b865630f96530ca8c654344738fa8 | 5ab685e, 13 behind
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Desktop | actions/conflict-scan@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Desktop | workflows/banner.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Desktop | workflows/issue-labels.yml@master | master
@@ -152,19 +152,19 @@ flowchart LR
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Desktop | workflows/pr-labels.yml@master | master
 %%   workflow | AnkiQuest/AnkiQuest-Dev -> AnkiQuest/AnkiQuest-Hosting | reusable workflow | -
 %%   checkout | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Sync | checked out by agents.yml, sync.yml | -
-%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Sync | AGENTS.md | differs, out of date
+%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Sync | AGENTS.md | matches
 %%   checkout | AnkiQuest/AnkiQuest-Server -> AnkiQuest/AnkiQuest-Dev | checked out by banner.yml | -
 %%   checkout | AnkiQuest/AnkiQuest-Server -> AnkiQuest/AnkiQuest.github.io | checked out by pages.yml | -
-%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Agents | AGENTS.md | differs, out of date
+%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Agents | AGENTS.md | matches
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Android | AGENTS.md | differs, out of date
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Android-Backend | AGENTS.md | differs, out of date
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Android-MCP | AGENTS.md | differs, out of date
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Anki | AGENTS.md | differs, out of date
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-AnkiConnectAndroid | AGENTS.md | differs, out of date
-%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Art | AGENTS.md | differs, out of date
+%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Art | AGENTS.md | matches
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Desktop | AGENTS.md | differs, out of date
-%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Dev | AGENTS.md | differs, out of date
+%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Dev | AGENTS.md | matches
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-GarmAnki | AGENTS.md | differs, out of date
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Hosting | AGENTS.md | -
 %%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest-Server | AGENTS.md | differs, out of date
-%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest.github.io | AGENTS.md | differs, out of date
+%%   agents | AnkiQuest/AnkiQuest-Agents -> AnkiQuest/AnkiQuest.github.io | AGENTS.md | matches

@@ -1,0 +1,8 @@
+[
+  { "fork": "AnkiQuest/AnkiQuest-Android", "upstream": "ankidroid/Anki-Android", "upstream_branch": "main" },
+  { "fork": "AnkiQuest/AnkiQuest-Anki", "upstream": "ankitects/anki", "upstream_branch": "main" },
+  { "fork": "AnkiQuest/AnkiQuest-Android-Backend", "upstream": "ankidroid/Anki-Android-Backend", "upstream_branch": "main" },
+  { "fork": "AnkiQuest/AnkiQuest-GarmAnki", "upstream": "sypianski/garmanki", "upstream_branch": "master" },
+  { "fork": "AnkiQuest/AnkiQuest-Android-MCP", "upstream": "ankimcp/ankidroid-mcp", "upstream_branch": "main" },
+  { "fork": "AnkiQuest/AnkiQuest-AnkiConnectAndroid", "upstream": "KamWithK/AnkiconnectAndroid", "upstream_branch": "master" }
+]

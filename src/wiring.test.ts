@@ -20,10 +20,13 @@ import {
   properties,
   repeatedRows,
   repoTable,
-  syncMatrix,
+  syncedForks,
+  unsynced,
   versionCatalog,
+  watched,
   workflowCheckouts,
   workflowUses,
+  type RepoRow,
 } from "./wiring-parse.ts";
 import {
   DEFAULT_KINDS,
@@ -168,12 +171,7 @@ test("properties and mavenLatest", () => {
   assert.equal(mavenLatest("<metadata/>"), undefined);
 });
 
-test("syncMatrix and agentsTargets read AnkiQuest-Sync's workflows", () => {
-  const sync = `        include:
-          - { fork: AnkiQuest/AnkiQuest-Anki, upstream: ankitects/anki, upstream_branch: main }
-          # - { fork: AnkiQuest/Old, upstream: a/b, upstream_branch: main }
-`;
-  assert.deepEqual(syncMatrix(sync), [{ fork: "AnkiQuest/AnkiQuest-Anki", upstream: "ankitects/anki", branch: "main" }]);
+test("agentsTargets reads AnkiQuest-Sync's agents workflow", () => {
   const agents = `env:
   TARGETS: |
     [
@@ -531,4 +529,68 @@ test("vendorSource names the repository a copied provider contract links", () =>
   assert.equal(vendorSource(ours), "AnkiQuest/AnkiQuest-Android");
   assert.equal(vendorSource(theirs), "ankidroid/Anki-Android");
   assert.equal(vendorSource("object FlashCardsContract"), "ankidroid/Anki-Android");
+});
+
+/** Reads AnkiQuest-Sync's files as committed (copies in src/fixtures/sync). */
+const syncFile = (file: string): string | undefined => {
+  try {
+    return readFileSync(new URL(`fixtures/sync/${file}`, import.meta.url), "utf8");
+  } catch {
+    return undefined;
+  }
+};
+
+/** shared.md's forks and their upstreams. */
+const FORKS: RepoRow[] = [
+  ["AnkiQuest-Android", "ankidroid/Anki-Android"],
+  ["AnkiQuest-Anki", "ankitects/anki"],
+  ["AnkiQuest-Android-Backend", "ankidroid/Anki-Android-Backend"],
+  ["AnkiQuest-GarmAnki", "sypianski/garmanki"],
+  ["AnkiQuest-Android-MCP", "ankimcp/ankidroid-mcp"],
+  ["AnkiQuest-AnkiConnectAndroid", "KamWithK/AnkiconnectAndroid"],
+].map(([name, upstream]) => ({ repo: `AnkiQuest/${name}`, upstream, purpose: "" }));
+
+test("syncedForks reads every fork's upstream from AnkiQuest-Sync's forks.json", () => {
+  const forks = syncedForks(syncFile);
+  assert.deepEqual(
+    forks.filter((fork) => fork.origin === "forks.json").map((fork) => [fork.upstream, fork.fork, fork.branch, fork.head]),
+    [
+      ["ankidroid/Anki-Android", "AnkiQuest/AnkiQuest-Android", "main", "sync/ankidroid/Anki-Android"],
+      ["ankitects/anki", "AnkiQuest/AnkiQuest-Anki", "main", "sync/ankitects/anki"],
+      ["ankidroid/Anki-Android-Backend", "AnkiQuest/AnkiQuest-Android-Backend", "main", "sync/ankidroid/Anki-Android-Backend"],
+      ["sypianski/garmanki", "AnkiQuest/AnkiQuest-GarmAnki", "master", "sync/sypianski/garmanki"],
+      ["ankimcp/ankidroid-mcp", "AnkiQuest/AnkiQuest-Android-MCP", "main", "sync/ankimcp/ankidroid-mcp"],
+      ["KamWithK/AnkiconnectAndroid", "AnkiQuest/AnkiQuest-AnkiConnectAndroid", "master", "sync/KamWithK/AnkiconnectAndroid"],
+    ],
+  );
+
+  // Watched sources in mode "merge" are merged by the same job, on their own branch.
+  assert.deepEqual(
+    forks.filter((fork) => fork.origin === "watched.json").map((fork) => [fork.upstream, fork.fork, fork.branch, fork.head]),
+    [
+      ["JSchoreels/anki", "AnkiQuest/AnkiQuest-Anki", "main", "sync/JSchoreels/anki-main"],
+      ["Pedrubik2000/kuma3-anki-core", "AnkiQuest/AnkiQuest-Anki", "rwkv", "sync/Pedrubik2000/kuma3-anki-core-rwkv"],
+      ["Pedrubik2000/kuma3-anki-backend", "AnkiQuest/AnkiQuest-Android-Backend", "rwkv", "sync/Pedrubik2000/kuma3-anki-backend-rwkv"],
+    ],
+  );
+
+  // Every fork shared.md names is synced: no notes.
+  assert.deepEqual(unsynced(FORKS, forks), []);
+
+  // A fork shared.md names that forks.json leaves out is still reported.
+  const extra = { repo: "AnkiQuest/AnkiQuest-New", upstream: "someone/new", purpose: "" };
+  assert.deepEqual(unsynced([...FORKS, extra], forks), ["AnkiQuest/AnkiQuest-New: shared.md names upstream someone/new, but forks.json does not sync it."]);
+});
+
+test("watched reads each source's mode", () => {
+  const modes = watched(syncFile("watched.json") ?? "[]").map((entry) => [entry.source, entry.mode]);
+  assert.deepEqual(modes, [
+    ["JSchoreels/anki", "merge"],
+    ["JSchoreels/fsrs-rs", "pin"],
+    ["open-spaced-repetition/fsrs-rs", "port"],
+    ["Pedrubik2000/kuma3-anki-core", "merge"],
+    ["Pedrubik2000/kuma3-anki-backend", "merge"],
+    ["Pedrubik2000/kuma3-anki-app", "port"],
+    ["ankidroid/Anki-Android-Backend", "port"],
+  ]);
 });

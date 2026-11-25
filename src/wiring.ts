@@ -5,7 +5,7 @@
 // submodules, flake inputs, Cargo and Gradle dependencies, published
 // artifacts, workflows used from other repositories, pinned AnkiQuest-Server
 // commits, AGENTS.md against AnkiQuest-Agents, forks against their
-// upstreams (AnkiQuest-Sync's sync.yml) and watched sources (watched.json).
+// upstreams (AnkiQuest-Sync's forks.json) and watched sources (watched.json).
 // What it cannot read is marked unknown and listed in `notes`.
 
 import { writeFileSync } from "node:fs";
@@ -28,11 +28,13 @@ import {
   properties,
   repeatedRows,
   repoTable,
-  syncMatrix,
+  syncedForks,
+  unsynced,
   versionCatalog,
   watched,
   workflowCheckouts,
   workflowUses,
+  type ForkSync,
   type MavenDep,
   type RepoRow,
 } from "./wiring-parse.ts";
@@ -658,41 +660,47 @@ class Collector {
     });
   }
 
-  /** Forks against their upstreams, from AnkiQuest-Sync's sync.yml. */
+  /**
+   * What the sync job merges, from AnkiQuest-Sync's forks.json (each fork's
+   * upstream) and watched.json (sources in mode "merge").
+   */
   private async upstreams(): Promise<void> {
-    const forks = syncMatrix(this.clones.read(SYNC, ".github/workflows/sync.yml") ?? "");
-    const table = this.ours.filter((row) => row.upstream);
-    for (const row of table) {
-      if (!forks.some((fork) => fork.fork === row.repo && fork.upstream === row.upstream)) {
-        this.notes.push(`${row.repo}: shared.md names upstream ${row.upstream}, but sync.yml does not sync it.`);
-      }
-    }
-
+    const forks = syncedForks((file) => this.clones.read(SYNC, file));
+    this.notes.push(...unsynced(this.ours, forks));
     for (const fork of forks) {
-      const owner = fork.upstream.split("/")[0];
-      const pulls = await openPulls(fork.fork, `${owner}:${fork.branch}`);
-      const pull = pulls?.[0];
-      try {
-        const ref = this.clones.fetch(fork.fork, fork.upstream, fork.branch);
-        const latest = this.clones.resolve(fork.fork, ref);
-        const behind = this.clones.count(fork.fork, "HEAD", ref);
-        const ahead = this.clones.count(fork.fork, ref, "HEAD");
-        this.edge({
-          kind: "upstream",
-          from: fork.upstream,
-          to: fork.fork,
-          label: `${fork.branch} merged by the sync job`,
-          pinned: this.clones.mergeBase(fork.fork, "HEAD", ref),
-          latest,
-          behind,
-          status: pinStatus("merge base", latest, behind),
-          detail: [`${ahead ?? "?"} commits of ours on top`, pull ? `open: ${pull.url}` : undefined].filter(Boolean).join("; "),
-          source: blob(SYNC, ".github/workflows/sync.yml"),
-        });
+      await this.merged(fork);
+    }
+  }
+
+  /** One merge the sync job makes: the fork's merge base with the source's branch. */
+  private async merged(fork: ForkSync): Promise<void> {
+    const kind: EdgeKind = fork.origin === "forks.json" ? "upstream" : "watched";
+    const label = `${fork.branch} merged by the sync job`;
+    const source = blob(SYNC, fork.origin);
+    const pull = (await openPulls(fork.fork, `${ORG}:${fork.head}`))?.[0];
+    try {
+      const ref = this.clones.fetch(fork.fork, fork.upstream, fork.branch);
+      const latest = this.clones.resolve(fork.fork, ref);
+      const behind = this.clones.count(fork.fork, "HEAD", ref);
+      const ahead = this.clones.count(fork.fork, ref, "HEAD");
+      this.edge({
+        kind,
+        from: fork.upstream,
+        to: fork.fork,
+        label,
+        pinned: this.clones.mergeBase(fork.fork, "HEAD", ref),
+        latest,
+        behind,
+        status: pinStatus("merge base", latest, behind),
+        purpose: fork.purpose,
+        detail: [`${ahead ?? "?"} commits of ours on top`, pull ? `open: ${pull.url}` : undefined].filter(Boolean).join("; "),
+        source,
+      });
+      if (fork.origin === "forks.json") {
         this.upstreamPins(fork.fork, fork.upstream, ref);
-      } catch (error) {
-        this.edge({ kind: "upstream", from: fork.upstream, to: fork.fork, label: `${fork.branch} merged by the sync job`, status: "unknown", detail: String(error), source: blob(SYNC, ".github/workflows/sync.yml") });
       }
+    } catch (error) {
+      this.edge({ kind, from: fork.upstream, to: fork.fork, label, status: "unknown", purpose: fork.purpose, detail: String(error), source });
     }
   }
 
@@ -726,25 +734,48 @@ class Collector {
     }
   }
 
-  /** Sources watched.json lists: reviewed commit or version against the current one. */
+  /**
+   * Sources watched.json lists in mode "pin" (the target's Cargo pin, which
+   * the sync job moves) and "port" (the commit or version last ported by
+   * hand). Mode "merge" is drawn with the upstreams.
+   */
   private watchedSources(): void {
-    const list = watched(this.clones.read(SYNC, "watched.json") ?? "[]");
-    for (const entry of list) {
-      const source = blob(SYNC, "watched.json");
+    const source = blob(SYNC, "watched.json");
+    for (const entry of watched(this.clones.read(SYNC, "watched.json") ?? "[]")) {
+      if (entry.mode === "merge") {
+        continue;
+      }
+      const label = entry.kind === "version" ? `${entry.key} on ${entry.ref}` : entry.mode === "pin" ? `${entry.ref}, Cargo pin moved by the sync job` : `${entry.ref}, ported by hand`;
+      const fact = { kind: "watched" as const, from: entry.source, to: entry.target, label, purpose: entry.why, source };
+      let pinned = entry.mode === "port" ? entry.reviewed : undefined;
       try {
         const ref = this.clones.fetch(entry.target, entry.source, entry.ref);
         if (entry.kind === "version") {
           const current = properties(this.clones.readAt(entry.target, ref, entry.file ?? "") ?? "").get(entry.key ?? "");
-          this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.key} on ${entry.ref}`, pinned: entry.reviewed, latest: current, status: pinStatus(entry.reviewed, current, undefined), purpose: entry.why, source });
+          this.edge({ ...fact, pinned, latest: current, status: pinStatus(pinned, current, undefined) });
           continue;
         }
+        if (entry.mode === "pin") {
+          pinned = this.cargoRev(entry.target, entry.source, entry.package);
+        }
         const latest = this.clones.resolve(entry.target, ref);
-        const behind = this.clones.count(entry.target, entry.reviewed, ref);
-        this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.ref}, ported by hand`, pinned: entry.reviewed, latest, behind, status: pinStatus(entry.reviewed, latest, behind), purpose: entry.why, source });
+        const behind = pinned ? this.clones.count(entry.target, pinned, ref) : undefined;
+        this.edge({ ...fact, pinned, latest, behind, status: pinStatus(pinned, latest, behind) });
       } catch (error) {
-        this.edge({ kind: "watched", from: entry.source, to: entry.target, label: `${entry.ref}, ported by hand`, pinned: entry.reviewed, status: "unknown", purpose: entry.why, detail: String(error), source });
+        this.edge({ ...fact, pinned, status: "unknown", detail: String(error) });
       }
     }
+  }
+
+  /** The full commit `repo`'s Cargo.toml files pin crate `name` of `source` to. */
+  private cargoRev(repo: string, source: string, name: string | undefined): string | undefined {
+    for (const file of this.clones.files(repo).filter((path) => basename(path) === "Cargo.toml")) {
+      const dep = cargoDeps(this.clones.read(repo, file) ?? "").find((candidate) => candidate.name === name && candidate.git && githubRepo(candidate.git) === source);
+      if (dep?.rev) {
+        return this.full(repo, dep.rev);
+      }
+    }
+    return undefined;
   }
 
   /** Each repository's AGENTS.md against the one AnkiQuest-Sync generates from AnkiQuest-Agents. */

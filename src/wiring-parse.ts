@@ -286,26 +286,58 @@ export function mavenLatest(xml: string): string | undefined {
   return /<release>([^<]+)<\/release>/.exec(xml)?.[1] ?? /<latest>([^<]+)<\/latest>/.exec(xml)?.[1];
 }
 
-/** One fork the sync job keeps up to date, from sync.yml's matrix. */
+/** Which AnkiQuest-Sync file names a source the sync job merges. */
+export type SyncOrigin = "forks.json" | "watched.json";
+
+/** A source the sync job merges into a fork: an upstream, or a watched source in mode "merge". */
 export interface ForkSync {
   fork: string;
   upstream: string;
+  /** The branch of `upstream` that is merged. */
   branch: string;
+  /** The fork's branch the sync pull request comes from. */
+  head: string;
+  origin: SyncOrigin;
+  /** What a watched source is watched for (watched.json's `why`). */
+  purpose?: string;
 }
 
-/** The `{ fork, upstream, upstream_branch }` rows of AnkiQuest-Sync's sync.yml. */
-export function syncMatrix(text: string): ForkSync[] {
-  const list: ForkSync[] = [];
-  for (const raw of text.split("\n")) {
-    const line = uncomment(raw);
-    const fork = /fork:\s*([\w.-]+\/[\w.-]+)/.exec(line)?.[1];
-    const upstream = /upstream:\s*([\w.-]+\/[\w.-]+)/.exec(line)?.[1];
-    const branch = /upstream_branch:\s*([\w.\/-]+)/.exec(line)?.[1];
-    if (fork && upstream && branch) {
-      list.push({ fork, upstream, branch });
-    }
-  }
-  return list;
+/** Reads a file of AnkiQuest-Sync's default branch, or undefined. */
+export type SyncReader = (file: string) => string | undefined;
+
+/**
+ * What the sync job merges, in the order of its matrix (`source-watch
+ * matrix forks.json watched.json`): each fork's upstream, then each watched
+ * source in mode "merge".
+ */
+export function syncedForks(read: SyncReader): ForkSync[] {
+  const forks = JSON.parse(read("forks.json") ?? "[]") as { fork: string; upstream: string; upstream_branch: string }[];
+  const upstreams = forks.map((row): ForkSync => ({
+    fork: row.fork,
+    upstream: row.upstream,
+    branch: row.upstream_branch,
+    head: `sync/${row.upstream}`,
+    origin: "forks.json",
+  }));
+  const merged = watched(read("watched.json") ?? "[]")
+    .filter((entry) => entry.mode === "merge")
+    .map((entry): ForkSync => ({
+      fork: entry.target,
+      upstream: entry.source,
+      branch: entry.ref,
+      head: `sync/${entry.source}-${entry.ref}`,
+      origin: "watched.json",
+      purpose: entry.why,
+    }));
+  return [...upstreams, ...merged];
+}
+
+/** A note for each fork shared.md names an upstream for that forks.json does not sync. */
+export function unsynced(table: RepoRow[], forks: ForkSync[]): string[] {
+  const upstreams = forks.filter((fork) => fork.origin === "forks.json");
+  return table
+    .filter((row) => row.upstream && !upstreams.some((fork) => fork.fork === row.repo && fork.upstream === row.upstream))
+    .map((row) => `${row.repo}: shared.md names upstream ${row.upstream}, but forks.json does not sync it.`);
 }
 
 /** The repositories in the TARGETS list of AnkiQuest-Sync's agents.yml. */
@@ -319,12 +351,23 @@ export interface Watched {
   source: string;
   ref: string;
   kind: "branch" | "version";
+  /**
+   * How the source reaches the target: "merge", merged by the sync job;
+   * "pin", a Cargo pin the job moves; "port", ported by hand from `reviewed`.
+   */
+  mode: WatchMode;
   target: string;
   why: string;
-  reviewed: string;
+  /** The commit or version last ported; mode "port" only. */
+  reviewed?: string;
+  /** The crate the target pins; mode "pin" only. */
+  package?: string;
   file?: string;
   key?: string;
 }
+
+/** How a watched source reaches its target. */
+export type WatchMode = "merge" | "pin" | "port";
 
 /** Parses AnkiQuest-Sync's watched.json. */
 export function watched(text: string): Watched[] {

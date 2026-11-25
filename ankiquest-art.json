@@ -1,18 +1,18 @@
 {
   "_about": "The AnkiQuest-Art release this repository uses. AnkiQuest-Sync updates it when Art publishes a release; don't edit it by hand.",
-  "tag": "art-9",
-  "commit": "3a6281409c9b8e0b1df03c59e9958b6649b2e549",
+  "tag": "art-10",
+  "commit": "861d0bd8ce0e763e3d4ddda20e198875eb457ec1",
   "assets": {
-    "android-drawables.zip": "548588cf3ddce4ca9245b77c9529091c9e1533c5d90aeef23917d458b07c3a84",
-    "addon-art.zip": "fc8e8c49879e957b66b423be94d7d3c5f9c437f20fce1b42553d4fabe0447c73",
-    "masters.zip": "a7a91e46e004e60b46b0889513eed27701da67562bc055217b9bbfdd1e95b2e2",
+    "android-drawables.zip": "4df18f3b93c0e7eaa8056e4e291cd2aa5c92c786c3369052a3dce4964a5779c2",
+    "addon-art.zip": "1cca5e95cf4ec394d332a52caae3e5d3b0df984b941a4d764e94586749d81e3a",
+    "masters.zip": "6eac9d85d2140312a8bb6d4c8f9cdfed619ee7ac0ffce503977e20ae419042cd",
     "archive.zip": "9d48eeccb64f497e3e732e055dd94073b6d880ffc58d7aa0bb8f8f33156ef2d9",
-    "manifest.json": "fb5ab60ad3ef6c20cdcc286732586dcbf9c63b32bfc5acf285cdaa4e9ed2f2e1",
+    "manifest.json": "477f59d40d5e491e502c4ccff3fd79717e7fe6de39b19af8adc49d52c83430f6",
     "poses.json": "e41766b186c26082fcfff73027dcf37251ca4c748f6efd32f58f6c2247aeac3d",
-    "packs.json": "2a5172208af8b9d0f400db44f53b8bc57670745dec0f45351ec8861fdc385f22",
-    "pack-aki.zip": "06a31bcd970f9536e50f47a7e6f173c19cd7885d0a6d307eea1cd60f35251c2a",
-    "pack-anki_tan.zip": "d22262ea11b2fdb461deed1c65ca28133904c93c33b82c83fe5f95977455b394",
-    "pack-ankilope.zip": "485fe65568f4671e992cc9326afcea47e8edc8f79187e39dc3bc3833ab9752cc",
-    "pack-cow.zip": "4f43f01557ddba75023146f52aeb25a9f0f109ff7fe9b72d67b9f15c6b98db21"
+    "packs.json": "489f1df164bdcba25857ea5005324d026ba6946346463e48a60d86575fac3898",
+    "pack-aki.zip": "7977de59f86348cc5f10e2d722d8229339c1e02961995e6c8629ecad7d009ff7",
+    "pack-anki_tan.zip": "59423e703db9e73f54ee09782dc0b61c5d042256c2af32bd69cf07cbb9ac5ad7",
+    "pack-ankilope.zip": "fc0b68774d8f31d448d5b353e911abb66eddeff7c8cba01c2cdaa5355bd8de28",
+    "pack-cow.zip": "7ca42f594720ba5d22f6299096c854214fad010974ebf29541fac395e8a4a194"
   }
 }

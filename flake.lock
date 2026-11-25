@@ -11,11 +11,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1795222094,
-        "narHash": "sha256-pfIpV2L9nkkUN3MVc9xCftYdUqVh27V+2ZJrIS4mR7E=",
+        "lastModified": 1795331033,
+        "narHash": "sha256-PyofXTQa1bBHTg6IQKi7CuooeiqZJ5uYxa16E4jm95k=",
         "owner": "AnkiQuest",
         "repo": "AnkiQuest-Dev",
-        "rev": "c80cdd81870d65630b1a04b7c9ffd4af894db9fd",
+        "rev": "cd577a03f05358504b97840e4a450a5b6a100867",
         "type": "github"
       },
       "original": {

@@ -1,3 +1,5 @@
 _site/
 node_modules/
 .art/
+# AnkiQuest-Server master, cloned for the build (README).
+/server/

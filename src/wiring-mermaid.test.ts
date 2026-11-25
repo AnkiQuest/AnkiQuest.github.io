@@ -104,6 +104,35 @@ test("mermaid draws lanes, merged edges, out-of-date and planned edges, and list
   assert.ok(!text.includes("9999999") && !text.includes("fffffff") && !text.includes("secret.yml"), "nothing of the private repository but its links");
 });
 
+test("mermaid draws a module inside its repository's subgraph and a release as a flag", () => {
+  const map: Wiring = {
+    generated: "2026-11-25T00:00:00.000Z",
+    notes: [],
+    nodes: [
+      { id: "AnkiQuest/AnkiQuest-Android", kind: "fork", label: "AnkiQuest-Android", readable: true },
+      { id: "AnkiQuest/AnkiQuest-Desktop", kind: "repo", label: "AnkiQuest-Desktop", readable: true },
+      { id: "AnkiQuest/AnkiQuest-Server", kind: "repo", label: "AnkiQuest-Server", readable: true },
+      { id: "module:AnkiQuest-Lite", kind: "module", label: "AnkiQuest Lite", readable: true, planned: true, partOf: "AnkiQuest/AnkiQuest-Android" },
+      { id: "release:ankiquest-rules", kind: "release", label: "ankiquest_rules.wasm", readable: true },
+    ],
+    edges: merge([
+      { kind: "runtime", from: "AnkiQuest/AnkiQuest-Server", to: "module:AnkiQuest-Lite", label: "HTTPS API", status: "planned" },
+      { kind: "publishes", from: "AnkiQuest/AnkiQuest-Server", to: "release:ankiquest-rules", label: "publishes ankiquest_rules.wasm", status: "none" },
+      { kind: "rules", from: "release:ankiquest-rules", to: "AnkiQuest/AnkiQuest-Desktop", label: "planned", status: "planned" },
+    ]),
+  };
+  const ids = mermaidIds(map.nodes);
+  const [android, lite, rules] = ["AnkiQuest/AnkiQuest-Android", "module:AnkiQuest-Lite", "release:ankiquest-rules"].map((id) => ids.get(id)!);
+  const text = mermaid(map);
+  const group = text.indexOf(`subgraph group_${android}["AnkiQuest-Android"]`);
+  assert.ok(group > 0, text);
+  const end = text.indexOf("    end", group);
+  assert.ok(text.indexOf(`${android}[[`, group) < end && text.indexOf(`${lite}("AnkiQuest Lite (planned)")`, group) < end, text);
+  assert.equal(text.split(`${lite}(`).length, 2, "the module is drawn once");
+  assert.match(text, new RegExp(`${rules}>"ankiquest_rules\\.wasm"\\]`));
+  assert.match(text, new RegExp(`${rules} -\\.->\\|"rules release pin: planned"\\| `));
+});
+
 test("the committed wiring.mmd is what mermaid makes of the committed wiring.json", () => {
   const map = JSON.parse(root("wiring.json")) as Wiring;
   assert.equal(root("wiring.mmd"), mermaid(map), "run: node src/wiring-mermaid.ts");

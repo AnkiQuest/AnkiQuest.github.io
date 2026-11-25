@@ -104,6 +104,44 @@ const PLANNED: { row: RepoRow; consumers: string[]; pin: string }[] = [
   },
 ];
 
+/**
+ * Modules decided inside one of the repositories, drawn in a box with it.
+ * AnkiQuest Lite is a second app in AnkiQuest-Android for players on stock
+ * AnkiDroid: it reads AnkiDroid through its content provider (through
+ * org.ankiquest:api) and talks to the server. It stays planned until the
+ * module is in the repository and its edges can be read from its files.
+ */
+export const MODULES: { id: string; label: string; partOf: string; purpose: string; links: { kind: EdgeKind; from: string; label: string }[] }[] = [
+  {
+    id: "module:AnkiQuest-Lite",
+    label: "AnkiQuest Lite",
+    partOf: ANDROID,
+    purpose: "A second app module in AnkiQuest-Android for players on stock AnkiDroid, through org.ankiquest:api.",
+    links: [
+      { kind: "runtime", from: SERVER, label: "HTTPS API" },
+      { kind: "runtime", from: "ankidroid/Anki-Android", label: "content provider" },
+    ],
+  },
+];
+
+/**
+ * Release assets a repository publishes for others to pin, and who pins
+ * them. The node is planned until the publisher has the file that builds
+ * the asset; each use edge until the consumer's pin file names a release.
+ */
+export const RELEASES: { id: string; label: string; publisher: string; builtBy: string; purpose: string; kind: EdgeKind; consumers: string[]; pin: string }[] = [
+  {
+    id: "release:ankiquest-rules",
+    label: "ankiquest_rules.wasm",
+    publisher: SERVER,
+    builtBy: "crates/rules-wasm/Cargo.toml",
+    purpose: "The shared rules (crates/rules) as one WebAssembly module, published as rules-<N> releases and pinned in each consumer's ankiquest-rules.json.",
+    kind: "rules",
+    consumers: [DESKTOP],
+    pin: "ankiquest-rules.json",
+  },
+];
+
 /** Maven groups that belong to Anki or AnkiQuest, and who publishes the ones we don't. */
 const MAVEN_GROUPS: Record<string, string | undefined> = {
   "org.ankiquest": undefined,
@@ -195,6 +233,8 @@ class Collector {
     await this.stepAsync("AGENTS.md", () => this.agents());
     this.step("runtime links", () => this.runtime());
     this.planned();
+    this.step("modules", () => this.modules());
+    this.step("releases", () => this.releases());
     for (const link of PRIVATE_LINKS) {
       this.edge({ ...link, status: "none" });
     }
@@ -733,13 +773,51 @@ class Collector {
   private planned(): void {
     for (const plan of PLANNED) {
       for (const consumer of plan.consumers) {
-        const text = this.readable.has(consumer) ? this.clones.read(consumer, plan.pin) : undefined;
-        const tag = text === undefined ? undefined : (JSON.parse(text) as { tag?: string | null }).tag;
-        if (tag) {
-          this.edge({ kind: "art", from: plan.row.repo, to: consumer, label: tag, pinned: tag, status: "current", detail: `pinned in ${plan.pin}`, source: blob(consumer, plan.pin) });
-        } else {
-          this.edge({ kind: "art", from: plan.row.repo, to: consumer, label: "planned", status: "planned", detail: `decided, not in the repository's ${plan.pin} yet` });
-        }
+        this.pinned("art", plan.row.repo, consumer, plan.pin);
+      }
+    }
+  }
+
+  /** A release pin of `from` in `consumer`'s `pin` file: its tag, or planned while the file names none. */
+  private pinned(kind: EdgeKind, from: string, consumer: string, pin: string): void {
+    const text = this.readable.has(consumer) ? this.clones.read(consumer, pin) : undefined;
+    const tag = text === undefined ? undefined : (JSON.parse(text) as { tag?: string | null }).tag;
+    if (tag) {
+      this.edge({ kind, from, to: consumer, label: tag, pinned: tag, status: "current", detail: `pinned in ${pin}`, source: blob(consumer, pin) });
+      return;
+    }
+    this.edge({ kind, from, to: consumer, label: "planned", status: "planned", detail: `decided, not in the repository's ${pin} yet` });
+  }
+
+  /** Modules inside a repository: planned nodes with their declared links. */
+  private modules(): void {
+    for (const module of MODULES) {
+      const node = this.node(module.id, "module", module.label);
+      node.url = `https://github.com/${module.partOf}`;
+      node.partOf = module.partOf;
+      node.purpose = module.purpose;
+      node.planned = true;
+      node.note = `Planned: a module of ${module.partOf}, not in the repository yet.`;
+      for (const link of module.links) {
+        this.edge({ kind: link.kind, from: link.from, to: module.id, label: link.label, status: "planned", detail: "decided, not built yet" });
+      }
+    }
+  }
+
+  /** Release assets: published by their repository, pinned by their consumers. */
+  private releases(): void {
+    for (const release of RELEASES) {
+      const node = this.node(release.id, "release", release.label);
+      node.url = `https://github.com/${release.publisher}/releases`;
+      node.purpose = release.purpose;
+      const built = this.readable.has(release.publisher) && this.clones.read(release.publisher, release.builtBy) !== undefined;
+      if (!built) {
+        node.planned = true;
+        node.note = `Planned: ${release.publisher} does not build it yet (${release.builtBy}).`;
+      }
+      this.edge({ kind: "publishes", from: release.publisher, to: release.id, label: `publishes ${release.label}`, status: built ? "none" : "planned" });
+      for (const consumer of release.consumers) {
+        this.pinned(release.kind, release.id, consumer, release.pin);
       }
     }
   }

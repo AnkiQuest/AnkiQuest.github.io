@@ -18,6 +18,7 @@ export const KIND_NAMES: Record<EdgeKind, string> = {
   watched: "Watched sources",
   submodule: "Git submodules",
   art: "Art release pins",
+  rules: "Rules release pins",
   flake: "Nix flake inputs",
   cargo: "Cargo crates",
   maven: "Maven artifacts",
@@ -35,7 +36,7 @@ export const KIND_NAMES: Record<EdgeKind, string> = {
  * others fan out from one repository to most of the rest; they start off
  * and show as badges on the repositories instead.
  */
-export const DEFAULT_KINDS: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["upstream", "watched", "submodule", "art", "cargo", "maven", "publishes", "data", "runtime"]);
+export const DEFAULT_KINDS: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["upstream", "watched", "submodule", "art", "rules", "cargo", "maven", "publishes", "data", "runtime"]);
 
 /** The node every external source AnkiQuest neither forks nor watches is grouped under. */
 export const COLLAPSED = "other-upstream-dependencies";
@@ -49,6 +50,7 @@ export const KIND_LINES: Record<EdgeKind, LineStyle> = {
   watched: "dashed",
   submodule: "solid",
   art: "solid",
+  rules: "solid",
   flake: "dashed",
   cargo: "solid",
   maven: "solid",
@@ -67,6 +69,7 @@ const KIND_NOUNS: Record<EdgeKind, [string, string]> = {
   watched: ["watched", "watched"],
   submodule: ["submodule", "submodules"],
   art: ["art release pin", "art release pins"],
+  rules: ["rules release pin", "rules release pins"],
   flake: ["flake", "flakes"],
   cargo: ["crate", "crates"],
   maven: ["artifact", "artifacts"],
@@ -230,8 +233,10 @@ export const LAYOUT: Record<string, Place> = {
   "maven:org.ankiquest": { lane: "core", x: X.coreSide, row: 10.4 },
   "maven:io.github.david-allison": { lane: "core", x: X.core, row: 11.3 },
 
-  // Clients, and the api module AnkiQuest-Android publishes.
+  // Clients, the api module AnkiQuest-Android publishes, and AnkiQuest Lite just above the app it
+  // is part of.
   "AnkiQuest/AnkiQuest-Desktop": { lane: "clients", x: X.clients, row: 7 },
+  "module:AnkiQuest-Lite": { lane: "clients", x: X.clients, row: 11.2 },
   "AnkiQuest/AnkiQuest-Android": { lane: "clients", x: X.clients, row: 12.3 },
   "maven:com.ichi2.anki": { lane: "clients", x: X.clientsSide, row: 12.3 },
 
@@ -243,6 +248,7 @@ export const LAYOUT: Record<string, Place> = {
   // Server and web.
   "AnkiQuest/AnkiQuest-Art": { lane: "server", x: X.server, row: 3.5 },
   "AnkiQuest/AnkiQuest-Server": { lane: "server", x: X.server, row: 7 },
+  "release:ankiquest-rules": { lane: "server", x: X.server, row: 8.6 },
   "AnkiQuest/AnkiQuest.github.io": { lane: "server", x: X.serverSide, row: 5.2 },
 
   // Shared infrastructure, along the bottom.
@@ -269,7 +275,8 @@ const FALLBACK_ROWS = 1.25;
 
 /**
  * The lane of a node LAYOUT does not place: an upstream's is the upstream
- * lane, a package's its publisher's, a fork's the app forks and any other
+ * lane, a package's or release's its publisher's, a module's the lane of
+ * the repository it is part of, a fork's the app forks and any other
  * repository's the shared infrastructure.
  */
 export function fallbackLane(map: Wiring, node: WiringNode): Lane {
@@ -280,15 +287,30 @@ export function fallbackLane(map: Wiring, node: WiringNode): Lane {
       return "forks";
     case "repo":
       return "infra";
+    case "module": {
+      const owner = map.nodes.find((candidate) => candidate.id === node.partOf);
+      if (!owner || owner.kind === "module") {
+        return "clients";
+      }
+      return LAYOUT[owner.id]?.lane ?? fallbackLane(map, owner);
+    }
+    case "release":
     case "package": {
       const publisher = map.edges.find((edge) => edge.kinds.includes("publishes") && edge.to === node.id)?.from;
       const owner = map.nodes.find((candidate) => candidate.id === publisher);
-      if (!owner || owner.kind === "package") {
+      if (!owner || owner.kind === "package" || owner.kind === "release") {
         return "core";
       }
       return LAYOUT[owner.id]?.lane ?? fallbackLane(map, owner);
     }
   }
+}
+
+/** The repositories that have modules on the map, in order of id: each is drawn in a box with them. */
+export function groupsOf(map: Wiring): string[] {
+  const ids = new Set(map.nodes.map((node) => node.id));
+  const owners = map.nodes.flatMap((node) => (node.kind === "module" && node.partOf && ids.has(node.partOf) ? [node.partOf] : []));
+  return [...new Set(owners)].sort();
 }
 
 /**
@@ -675,6 +697,21 @@ function graphStyle(): unknown[] {
     { selector: "node[kind = 'fork']", style: { "border-width": 4, "border-style": "double", "border-color": token("--accent") } },
     { selector: "node[kind = 'external']", style: { "corner-radius": 14, "background-color": token("--tile"), color: token("--muted"), "border-color": token("--line") } },
     { selector: "node[kind = 'package']", style: { shape: "cut-rectangle", "background-color": token("--tile") } },
+    { selector: "node[kind = 'release']", style: { shape: "tag", "background-color": token("--tile") } },
+    {
+      selector: "node.group",
+      style: {
+        shape: "round-rectangle",
+        "corner-radius": 12,
+        "background-opacity": 0,
+        "border-width": 1.5,
+        "border-style": "dotted",
+        "border-color": token("--line-strong"),
+        padding: 8,
+        label: "",
+        events: "no",
+      },
+    },
     { selector: "node[?planned]", style: { "border-style": "dashed", color: token("--muted") } },
     { selector: "node[?outdated]", style: { "border-color": token("--status-behind"), "border-width": 3 } },
     { selector: "node[kind = 'fork'][?outdated]", style: { "border-width": 5 } },
@@ -788,6 +825,11 @@ function elements(map: Wiring, edges: WiringEdge[], filter: Filter, at: Map<stri
     .filter((lane) => lanes.has(lane))
     .map((lane) => ({ group: "nodes", classes: "lane", data: { id: `lane:${lane}`, label: LANES[lane] } }));
 
+  // A repository with modules is drawn in a box with them, inside its lane.
+  const groups = new Map(groupsOf(map).map((owner) => [owner, `group:${owner}`]));
+  const groupElements = [...groups].map(([owner, id]) => ({ group: "nodes", classes: "group", data: { id, parent: `lane:${at.get(owner)!.lane}` } }));
+  const parentOf = (node: WiringNode): string => groups.get(node.partOf ?? node.id) ?? `lane:${at.get(node.id)!.lane}`;
+
   // Nodes stay in place whatever the filters; one without a line shown fades.
   const nodeElements = map.nodes.map((node) => {
     const place = at.get(node.id)!;
@@ -800,7 +842,7 @@ function elements(map: Wiring, edges: WiringEdge[], filter: Filter, at: Map<stri
     return {
       group: "nodes",
       classes,
-      data: { id: node.id, parent: `lane:${place.lane}`, label: label.join("\n"), width, height, kind: node.kind, planned: node.planned === true, outdated: outdated.has(node.id) },
+      data: { id: node.id, parent: parentOf(node), label: label.join("\n"), width, height, kind: node.kind, planned: node.planned === true, outdated: outdated.has(node.id) },
       position: { x: place.x, y: place.row * ROW },
     };
   });
@@ -818,7 +860,7 @@ function elements(map: Wiring, edges: WiringEdge[], filter: Filter, at: Map<stri
       data: { id: `e${index}`, source: line.from, target: line.to, kind: line.kind, status: line.status, mark: line.mark, bow: bend, index: map.edges.indexOf(line.edge) },
     };
   });
-  return [...laneElements, ...nodeElements, ...edgeElements];
+  return [...laneElements, ...groupElements, ...nodeElements, ...edgeElements];
 }
 
 /** Builds the page from wiring.json. */

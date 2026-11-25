@@ -130,7 +130,7 @@ test("mermaid draws a module inside its repository's subgraph and a release as a
   assert.ok(text.indexOf(`${android}[[`, group) < end && text.indexOf(`${lite}("AnkiQuest Lite (planned)")`, group) < end, text);
   assert.equal(text.split(`${lite}(`).length, 2, "the module is drawn once");
   assert.match(text, new RegExp(`${rules}>"ankiquest_rules\\.wasm"\\]`));
-  assert.match(text, new RegExp(`${rules} -\\.->\\|"rules release pin: planned"\\| `));
+  assert.match(text, new RegExp(`${rules} -\\.->\\|"rules release: planned"\\| `));
 });
 
 test("the committed wiring.mmd is what mermaid makes of the committed wiring.json", () => {

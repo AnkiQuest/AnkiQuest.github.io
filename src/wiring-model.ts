@@ -2,8 +2,12 @@
 // site/wiring.ts. Edges point the way code or data flows: from the
 // upstream, source, provider or publisher to the repository that takes it.
 
-/** What a node is. */
-export type NodeKind = "repo" | "fork" | "external" | "package";
+/**
+ * What a node is: a repository, a fork, an upstream or other outside
+ * source, a Maven group, a module inside one of the repositories (such as a
+ * second app), or the assets of a repository's releases.
+ */
+export type NodeKind = "repo" | "fork" | "external" | "package" | "module" | "release";
 
 /** How one node feeds another. */
 export type EdgeKind =
@@ -11,6 +15,7 @@ export type EdgeKind =
   | "watched"
   | "submodule"
   | "art"
+  | "rules"
   | "flake"
   | "cargo"
   | "maven"
@@ -28,6 +33,7 @@ export const EDGE_KINDS: EdgeKind[] = [
   "watched",
   "submodule",
   "art",
+  "rules",
   "flake",
   "cargo",
   "maven",
@@ -58,8 +64,10 @@ export interface WiringNode {
   private?: boolean;
   /** False when the generator could not read the repository. */
   readable: boolean;
-  /** A repository that is decided but has no commits yet. */
+  /** A repository, module or release that is decided but does not exist yet. */
   planned?: boolean;
+  /** For a module: the repository it is part of, which the page draws around both. */
+  partOf?: string;
   note?: string;
 }
 
@@ -69,6 +77,7 @@ export const KIND_LABELS: Record<EdgeKind, string> = {
   watched: "watched",
   submodule: "submodule",
   art: "art release pin",
+  rules: "rules release pin",
   flake: "flake input",
   cargo: "Cargo pin",
   maven: "Maven",

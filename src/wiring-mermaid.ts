@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 
 import { abbrev, state } from "./wiring-edges.ts";
 import { EDGE_KINDS, type Wiring, type WiringEdge, type WiringNode } from "./wiring-model.ts";
-import { DEFAULT_KINDS, LANES, places, type Lane } from "../site/wiring.ts";
+import { DEFAULT_KINDS, LANES, groupsOf, places, type Lane } from "../site/wiring.ts";
 
 /** Where the page lives, named in the header. */
 export const PAGE = "https://ankiquest.github.io/wiring.html";
@@ -79,7 +79,10 @@ export function mermaidIds(nodes: WiringNode[]): Map<string, string> {
   return result;
 }
 
-/** A node's shape and label: box for a repository, double box for a fork, stadium upstream, hexagon package. */
+/**
+ * A node's shape and label: box for a repository, double box for a fork,
+ * stadium upstream, hexagon package, rounded box module, flag release.
+ */
 function nodeLine(node: WiringNode, id: string): string {
   const marks = [node.private ? "private" : undefined, node.planned ? "planned" : undefined].filter(Boolean);
   const name = node.kind === "package" ? `${node.label} (Maven)` : node.label;
@@ -93,6 +96,10 @@ function nodeLine(node: WiringNode, id: string): string {
       return `${id}([${label}])`;
     case "package":
       return `${id}{{${label}}}`;
+    case "module":
+      return `${id}(${label})`;
+    case "release":
+      return `${id}>${label}]`;
   }
 }
 
@@ -181,8 +188,20 @@ export function mermaid(map: Wiring): string {
         out.push(`    ${nodeLine(node, ids.get(node.id)!)}`);
       }
     } else {
+      // A repository with modules gets a nested subgraph with them, where it stands.
+      const here = new Set(members.map((node) => node.id));
+      const owners = new Set(groupsOf(map).filter((owner) => here.has(owner)));
+      const inGroup = (node: WiringNode): boolean => owners.has(node.id) || (node.partOf !== undefined && owners.has(node.partOf));
       for (const node of members) {
-        out.push(`    ${nodeLine(node, ids.get(node.id)!)}`);
+        if (owners.has(node.id)) {
+          out.push(`    subgraph group_${ids.get(node.id)}["${escape(node.label)}"]`);
+          for (const member of members.filter((other) => other.id === node.id || other.partOf === node.id)) {
+            out.push(`      ${nodeLine(member, ids.get(member.id)!)}`);
+          }
+          out.push("    end");
+        } else if (!inGroup(node)) {
+          out.push(`    ${nodeLine(node, ids.get(node.id)!)}`);
+        }
       }
     }
     out.push("  end");

@@ -32,8 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # pushes the wiring-update branch
+      pull-requests: write # opens its pull request
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -71,12 +71,12 @@ jobs:
           gh auth setup-git
 
           # Add a commit to the open branch, or start it from master; never force-push.
-          files="wiring.json wiring.mmd wiring.svg wiring-dark.svg"
-          for file in $files; do cp "$file" "$RUNNER_TEMP/$file"; done
+          files=(wiring.json wiring.mmd wiring.svg wiring-dark.svg)
+          for file in "${files[@]}"; do cp "$file" "$RUNNER_TEMP/$file"; done
 
           # Generated files are safely backed up; restore the working tree
           # so Git can switch branches without overwriting local changes.
-          git restore -- $files
+          git restore -- "${files[@]}"
 
           if git fetch -q origin wiring-update 2>/dev/null; then
             git checkout -q -B wiring-update FETCH_HEAD
@@ -84,8 +84,8 @@ jobs:
           else
             git checkout -q -B wiring-update
           fi
-          for file in $files; do cp "$RUNNER_TEMP/$file" "$file"; done
-          git add $files
+          for file in "${files[@]}"; do cp "$RUNNER_TEMP/$file" "$file"; done
+          git add "${files[@]}"
           # A run cancelled after its push leaves the branch without a pull
           # request; the next run still opens one.
           if git diff --cached --quiet; then

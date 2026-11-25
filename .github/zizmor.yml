@@ -1,0 +1,10 @@
+# zizmor's rules for this repository's workflows and actions.
+rules:
+  # Third-party actions are pinned to a full commit SHA, which Dependabot
+  # bumps. AnkiQuest's own workflows and actions are taken at master, so
+  # every repository runs the same shared CI.
+  unpinned-uses:
+    config:
+      policies:
+        "AnkiQuest/*": any
+        "*": hash-pin

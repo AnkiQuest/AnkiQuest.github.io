@@ -1,18 +1,18 @@
 {
   "_about": "The AnkiQuest-Art release this repository uses. AnkiQuest-Sync updates it when Art publishes a release; don't edit it by hand.",
-  "tag": "art-10",
-  "commit": "861d0bd8ce0e763e3d4ddda20e198875eb457ec1",
+  "tag": "art-11",
+  "commit": "5e47fbeef33b7f1f40520b008f8d785343b836e0",
   "assets": {
-    "android-drawables.zip": "4df18f3b93c0e7eaa8056e4e291cd2aa5c92c786c3369052a3dce4964a5779c2",
+    "android-drawables.zip": "d1e311c05bf8417af138fb26dd03e37018b6bd90e0a91642423122b1dde36207",
     "addon-art.zip": "1cca5e95cf4ec394d332a52caae3e5d3b0df984b941a4d764e94586749d81e3a",
-    "masters.zip": "6eac9d85d2140312a8bb6d4c8f9cdfed619ee7ac0ffce503977e20ae419042cd",
-    "archive.zip": "9d48eeccb64f497e3e732e055dd94073b6d880ffc58d7aa0bb8f8f33156ef2d9",
-    "manifest.json": "477f59d40d5e491e502c4ccff3fd79717e7fe6de39b19af8adc49d52c83430f6",
+    "masters.zip": "4d9e1011c1e5e1fbd26293b59eea5960c671f69671c9ac424882aae1b2c3d454",
+    "archive.zip": "776106a8de7bd9f6e8af93da9aa89db11db7a27a0e34557dc313ada2d70c224c",
+    "manifest.json": "20ddd30f53b0353c1282b688882241af960513d6c7395266dca43f780754c013",
     "poses.json": "e41766b186c26082fcfff73027dcf37251ca4c748f6efd32f58f6c2247aeac3d",
-    "packs.json": "489f1df164bdcba25857ea5005324d026ba6946346463e48a60d86575fac3898",
-    "pack-aki.zip": "7977de59f86348cc5f10e2d722d8229339c1e02961995e6c8629ecad7d009ff7",
-    "pack-anki_tan.zip": "59423e703db9e73f54ee09782dc0b61c5d042256c2af32bd69cf07cbb9ac5ad7",
-    "pack-ankilope.zip": "fc0b68774d8f31d448d5b353e911abb66eddeff7c8cba01c2cdaa5355bd8de28",
-    "pack-cow.zip": "7ca42f594720ba5d22f6299096c854214fad010974ebf29541fac395e8a4a194"
+    "packs.json": "a3a8df1e568fc825bce691e516d169079f813da85ba237c2523a049c47555437",
+    "pack-aki.zip": "d68bdf30117a68b94b12a7dde05b3d780c5d775e80418b3f82ef595523dbb289",
+    "pack-anki_tan.zip": "4fe227fac3df3aa8fd650ffe63173da1598f1c042cafff6998484a4c18d3f1a8",
+    "pack-ankilope.zip": "0ba2f8b929c530e8268e261f33a5ced6f73ccd2a12eab9a9b0b29e37b62d28b8",
+    "pack-cow.zip": "bc902ed347703f1902b58ef145c3c3d170b26a8a85b441f2c8f8792093bfb0ed"
   }
 }

@@ -74,18 +74,6 @@ jobs:
         with:
           path: _site
 
-  # zizmor's security audit of the workflows, with the rules in
-  # .github/zizmor.yml, in AnkiQuest-Dev's default shell (the gallery shell
-  # has no zizmor). It reports as `zizmor / check`.
-  zizmor:
-    uses: AnkiQuest/AnkiQuest-Dev/.github/workflows/nix-check.yml@master
-    with:
-      flake: github:AnkiQuest/AnkiQuest-Dev
-      flake-check: false
-      format: ""
-      zizmor: true
-      timeout-minutes: 15
-
   deploy:
     if: github.event_name != 'pull_request'
     needs: build

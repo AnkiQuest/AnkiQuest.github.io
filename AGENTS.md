@@ -177,6 +177,7 @@ The art is a matrix: companions by poses. The goal is a full matrix: every pose 
 - Every exported copy (share cards, add-on, Android, gallery) is made by `tools/art-export` in AnkiQuest-Art and published in an AnkiQuest-Art release (`art-<N>`), with the masters, `manifest.json` and `poses.json`. No other repository commits a picture of a companion, generates copies itself or takes AnkiQuest-Art as a submodule.
 - Every repository that uses art pins one release in `ankiquest-art.json` (tag, Art commit, SHA-256 of each asset), downloads only the assets it needs and checks their SHA-256 before use; Nix builds read the hashes from that file. AnkiQuest-Sync updates the pin in every repository when AnkiQuest-Art publishes a release; never edit the file by hand.
 - The gallery (AnkiQuest.github.io) shows the matrix of all companions and poses, a page per companion with what it is missing and why, the licence of every picture, and the archive in a section of its own.
+- Generation records (prompts, selections, cleanup notes) live only in AnkiQuest-Art, and each is linked from the companion README it documents. A record a finished review froze into `poses.json` or `manifest.json` moves to `archive/docs/` instead of staying under `docs/`; never keep one in a client repository, whose shipped assets carry at most the licence attribution.
 
 ## Writing
 

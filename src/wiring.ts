@@ -159,9 +159,6 @@ const JITPACK_GROUP = "com.github.";
 /** Git file mode of a symbolic link. */
 const SYMLINK = "120000";
 
-/** The pinned Server commit files of the clients. */
-const SERVER_PIN = "ankiquest-server.sha";
-
 /**
  * Edges the files show only indirectly: the clients talk to the server over
  * HTTPS, and the Android apps read AnkiQuest's content provider. Each names
@@ -236,7 +233,6 @@ class Collector {
       this.step(`flake inputs of ${row.repo}`, () => this.flake(row.repo));
       this.step(`workflows of ${row.repo}`, () => this.workflows(row.repo));
       this.step(`Cargo dependencies of ${row.repo}`, () => this.cargo(row.repo));
-      this.step(`pinned Server commits of ${row.repo}`, () => this.serverPins(row.repo));
       this.step(`vendored files of ${row.repo}`, () => this.vendored(row.repo));
       await this.stepAsync(`Gradle dependencies of ${row.repo}`, () => this.gradle(row.repo));
     }
@@ -516,14 +512,6 @@ class Collector {
       return this.clones.resolve(repo, `${rev}^{commit}`);
     } catch {
       return rev;
-    }
-  }
-
-  /** Commits of AnkiQuest-Server pinned in `ankiquest-server.sha` files. */
-  private serverPins(repo: string): void {
-    for (const file of this.clones.files(repo).filter((path) => basename(path) === SERVER_PIN)) {
-      const pinned = this.clones.read(repo, file)?.trim();
-      this.edge({ kind: "data", from: SERVER, to: repo, label: "API examples and shared fixtures", ...this.pin(SERVER, pinned), source: blob(repo, file) });
     }
   }
 

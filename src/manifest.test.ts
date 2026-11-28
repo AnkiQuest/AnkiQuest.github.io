@@ -188,6 +188,19 @@ test("pictures: a picture the manifest does not list fails; docs/ is skipped", (
   }
 });
 
+test("pictures: archived review sheets stay out of the gallery", () => {
+  const data = manifest();
+  const review = "archive/docs/pose-review/review.png";
+  const art = checkout(data, [review]);
+  try {
+    const found = pictures(art, data);
+    assert.equal(found.has(review), false);
+    assert.equal(found.has("archive/anki-tan/sad-old.png"), true);
+  } finally {
+    rmSync(art, { recursive: true });
+  }
+});
+
 test("pictures: an unknown licence fails", () => {
   const data = manifest();
   data.masters[0].licence = "CC0-1.0";

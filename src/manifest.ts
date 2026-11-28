@@ -6,8 +6,8 @@
 //
 // The art matrix (src/matrix.ts, or trusted from a file) decides what each
 // companion shows; this file finds each shown picture in the Art checkout
-// so every card can credit it. A picture in Art the manifest does not
-// list, or a licence the gallery does not know, fails the build.
+// so every card can credit it. An unlisted picture outside Art's records,
+// or a licence the gallery does not know, fails the build.
 
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -18,8 +18,8 @@ import type { Cell, Companion, Coverage } from "./coverage.ts";
 /** Art's record of every master, the shared pictures and the archive. */
 const MANIFEST = "manifest.json";
 
-/** Art's folder of generation records; its pictures are not companion art. */
-const DOCS = "docs";
+/** Current and archived generation records are outside the gallery. */
+const RECORD_FOLDERS = new Set(["docs", "archive/docs"]);
 
 /** Files that count as pictures; other files (README, LICENSE, JSON) are notes. */
 const IMAGE = /\.(png|webp|jpe?g|gif|svg)$/i;
@@ -195,8 +195,8 @@ export function pictures(art: string, data: Manifest): Map<string, Picture> {
     byPack.set(entry.pack, entry.file);
   }
 
-  // Every picture in the checkout, outside docs/, must be listed.
-  const loose = walk(art, "", new Set([DOCS])).filter((file) => !found.has(file));
+  // Every picture outside the generation records must be listed.
+  const loose = walk(art, "", RECORD_FOLDERS).filter((file) => !found.has(file));
   if (loose.length > 0) {
     throw new Error(`${loose.join(", ")}: not in manifest.json`);
   }

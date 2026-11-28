@@ -1,7 +1,7 @@
 %% AnkiQuest wiring: how every AnkiQuest repository, upstream and package feeds the others.
 %% Generated from wiring.json (written by src/wiring.ts) by src/wiring-mermaid.ts in
 %% AnkiQuest/AnkiQuest.github.io; regenerated daily. Do not edit.
-%% Data of 2026-11-27 (wiring.json generated 2026-11-27T14:19:44.276Z).
+%% Data of 2026-11-28 (wiring.json generated 2026-11-28T13:36:27.446Z).
 %% Interactive page: https://ankiquest.github.io/wiring.html
 %% Arrows point the way code or data flows; one edge per pair of nodes, naming every kind of
 %% link between them ("watched + Cargo pin"), then the pinned commit or version and N behind,
@@ -75,7 +75,7 @@ flowchart LR
   end
 
   ankidroid_Anki_Android -->|"sync job"| AnkiQuest_Sync
-  AnkiQuest_Sync -->|"upstream merge: main merged by the sync job, f2c1a26, 24 behind"| AnkiQuest_Android
+  AnkiQuest_Sync -->|"upstream merge: main merged by the sync job, f2c1a26, 34 behind"| AnkiQuest_Android
   ankidroid_Anki_Android_Backend -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"upstream merge + watched, upstream merge 32ff859; watched 0.1.77-anki26.09.4"| AnkiQuest_Android_Backend
   ankidroid_Anki_Android_Backend -->|"sync job"| AnkiQuest_Sync
@@ -83,23 +83,23 @@ flowchart LR
   ankimcp_ankidroid_mcp -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"upstream merge: main merged by the sync job, e96e6a4"| AnkiQuest_Android_MCP
   ankitects_anki -->|"sync job"| AnkiQuest_Sync
-  AnkiQuest_Sync -->|"upstream merge: main merged by the sync job, 149b190, 5 behind"| AnkiQuest_Anki
+  AnkiQuest_Sync -->|"upstream merge: main merged by the sync job, 149b190, 7 behind"| AnkiQuest_Anki
   KamWithK_AnkiconnectAndroid -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"upstream merge: master merged by the sync job, 93ee1a1"| AnkiQuest_AnkiConnectAndroid
   sypianski_garmanki -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"upstream merge: master merged by the sync job, d9f8521"| AnkiQuest_GarmAnki
   JSchoreels_anki -->|"sync job"| AnkiQuest_Sync
-  AnkiQuest_Sync -->|"watched: main merged by the sync job, 29bb700, 762 behind"| AnkiQuest_Anki
+  AnkiQuest_Sync -->|"watched: main merged by the sync job, bfc5b05, 797 behind"| AnkiQuest_Anki
   JSchoreels_fsrs_rs -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"watched + Cargo pin, 4d829b6"| AnkiQuest_Anki
   open_spaced_repetition_fsrs_rs -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"watched: main, ported by hand, 9fb0392, 1 behind"| AnkiQuest_Anki
   Pedrubik2000_kuma3_anki_app -->|"sync job"| AnkiQuest_Sync
-  AnkiQuest_Sync -->|"watched: rwkv, ported by hand, 617683a, 3 behind"| AnkiQuest_Android
+  AnkiQuest_Sync -->|"watched: rwkv, ported by hand, 617683a, 5 behind"| AnkiQuest_Android
   Pedrubik2000_kuma3_anki_backend -->|"sync job"| AnkiQuest_Sync
   AnkiQuest_Sync -->|"watched: rwkv merged by the sync job, 11cc1de, 75 behind"| AnkiQuest_Android_Backend
   Pedrubik2000_kuma3_anki_core -->|"sync job"| AnkiQuest_Sync
-  AnkiQuest_Sync -->|"watched: rwkv merged by the sync job, 29bb700, 793 behind"| AnkiQuest_Anki
+  AnkiQuest_Sync -->|"watched: rwkv merged by the sync job, 29bb700, 794 behind"| AnkiQuest_Anki
   AnkiQuest_Anki -->|"submodule + Cargo pin, 0d3f2bd, 9 behind"| AnkiQuest_Android_Backend
   AnkiQuest_Hosting -->|"submodule"| float3_nixos
   other_upstream_dependencies -->|"submodule (4) + Cargo pin (2), submodule 4992570, 101 behind; submodule 8a58eb9, 28 behind; submodule 57f2b6d; submodule 0c95589; Cargo pin 2c7c081; Cargo pin bb930b8, 108 behind"| AnkiQuest_Anki

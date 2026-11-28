@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-27T14:19:44.276Z",
+  "generated": "2026-11-28T13:36:27.446Z",
   "nodes": [
     {
       "id": "AnkiQuest/AnkiQuest-Server",
@@ -19,7 +19,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Desktop",
       "purpose": "The Anki desktop add-on (Python).",
       "private": false,
-      "head": "a061755d0329cbc762eef4fa112f70049f70aa33"
+      "head": "924e52eed8b61516d0de413c3eebf709caf86573"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Android",
@@ -29,7 +29,7 @@
       "url": "https://github.com/AnkiQuest/AnkiQuest-Android",
       "purpose": "The Android app (Kotlin): AnkiDroid with AnkiQuest added, and AnkiQuest Lite for stock AnkiDroid users (coming).",
       "private": false,
-      "head": "608464975c41876f3d17e0f49e78506c6a3b447d"
+      "head": "02f376d5608a17af9c73dc7024debebd89aa9c46"
     },
     {
       "id": "AnkiQuest/AnkiQuest-Anki",
@@ -1183,21 +1183,21 @@
       "kinds": [
         "upstream"
       ],
-      "label": "upstream merge: main merged by the sync job, f2c1a26, 24 behind",
+      "label": "upstream merge: main merged by the sync job, f2c1a26, 34 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "upstream",
           "label": "main merged by the sync job",
           "pinned": "f2c1a269cbd36cebcd7c1ec069dc3ed59a30c601",
-          "latest": "639fb1a5822ba43272bc7bbcc4726238960ac826",
-          "behind": 24,
+          "latest": "694a1ffaeff061a0c2f8e6ae0cec07e91bb41cae",
+          "behind": 34,
           "status": "behind",
-          "detail": "1795 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Android/pull/566",
+          "detail": "1796 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Android/pull/566",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/forks.json"
         }
       ],
-      "behind": 24
+      "behind": 34
     },
     {
       "from": "ankitects/anki",
@@ -1205,21 +1205,21 @@
       "kinds": [
         "upstream"
       ],
-      "label": "upstream merge: main merged by the sync job, 149b190, 5 behind",
+      "label": "upstream merge: main merged by the sync job, 149b190, 7 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "upstream",
           "label": "main merged by the sync job",
           "pinned": "149b1901421281110aa4bf6510a971e9c5f2046d",
-          "latest": "e4e88c88739676a6a390db7fa42872d53e116827",
-          "behind": 5,
+          "latest": "d089d4a338e0f71da7b7897dd5edf6c95b810eeb",
+          "behind": 7,
           "status": "behind",
           "detail": "75 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Anki/pull/31",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/forks.json"
         }
       ],
-      "behind": 5
+      "behind": 7
     },
     {
       "from": "ankidroid/Anki-Android-Backend",
@@ -1340,22 +1340,22 @@
       "kinds": [
         "watched"
       ],
-      "label": "watched: main merged by the sync job, 29bb700, 762 behind",
+      "label": "watched: main merged by the sync job, bfc5b05, 797 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "watched",
           "label": "main merged by the sync job",
-          "pinned": "29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba",
-          "latest": "36c4f39d7a9880063656981b7d1f35dd23a38007",
-          "behind": 762,
+          "pinned": "bfc5b058033b58866513f0c0053dc8d8baea48ed",
+          "latest": "9fe094a700d1815eb4cd7070637b5cb84399a345",
+          "behind": 797,
           "status": "behind",
           "purpose": "FSRS-7 and the RWKV engine, carried on our master",
-          "detail": "228 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Anki/pull/28",
+          "detail": "116 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Anki/pull/28",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/watched.json"
         }
       ],
-      "behind": 762
+      "behind": 797
     },
     {
       "from": "Pedrubik2000/kuma3-anki-core",
@@ -1363,22 +1363,22 @@
       "kinds": [
         "watched"
       ],
-      "label": "watched: rwkv merged by the sync job, 29bb700, 793 behind",
+      "label": "watched: rwkv merged by the sync job, 29bb700, 794 behind",
       "status": "behind",
       "facts": [
         {
           "kind": "watched",
           "label": "rwkv merged by the sync job",
           "pinned": "29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba",
-          "latest": "f0d3f3823ef42c2295280f7f48764140daabede9",
-          "behind": 793,
+          "latest": "f090d7585290ebdd3f7b2caf2b0921537df44fa0",
+          "behind": 794,
           "status": "behind",
           "purpose": "kuma3's offline RWKV scheduler, carried on our master",
           "detail": "228 commits of ours on top; open: https://github.com/AnkiQuest/AnkiQuest-Anki/pull/27",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/watched.json"
         }
       ],
-      "behind": 793
+      "behind": 794
     },
     {
       "from": "Pedrubik2000/kuma3-anki-backend",
@@ -1431,7 +1431,7 @@
       "kinds": [
         "watched"
       ],
-      "label": "watched: rwkv, ported by hand, 617683a, 3 behind",
+      "label": "watched: rwkv, ported by hand, 617683a, 5 behind",
       "status": "behind",
       "facts": [
         {
@@ -1440,12 +1440,12 @@
           "purpose": "kuma3's app side of RWKV (RwkvOffline.kt, deck options), ported by hand: it is a different app",
           "source": "https://github.com/AnkiQuest/AnkiQuest-Sync/blob/HEAD/watched.json",
           "pinned": "617683ad03ac8ae661763ccf98733277f753f3d2",
-          "latest": "08897dddca729a51206c421598c9c151d75eac37",
-          "behind": 3,
+          "latest": "ac00ca7063680024d5bd94c83d636b890e7ed922",
+          "behind": 5,
           "status": "behind"
         }
       ],
-      "behind": 3
+      "behind": 5
     },
     {
       "from": "AnkiQuest/AnkiQuest-Agents",
